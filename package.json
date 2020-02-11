@@ -14,7 +14,13 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "sql-connect": "docker-compose run mysql-client",
     "sh-connect": "docker-compose run server sh",
-    "delete-volumes": "docker-compose down && docker volume rm bridge-api_mysql-data"
+    "generate-migration": "knex migrate:make -x ts",
+    "migrations:raw:run": "knex migrate:latest",
+    "migrations:raw:revert": "knex migrate:rollback",
+    "migrations:docker:run": "docker-compose run server npm run migrations:raw:run",
+    "migrations:docker:revert": "docker-compose run server npm run migrations:raw:revert",
+    "delete-volumes": "docker-compose down && docker volume rm bridge-api_mysql-data",
+    "init": "ts-node"
   },
   "repository": {
     "type": "git",
@@ -29,13 +35,15 @@
     "apollo-server-koa": "^2.10.0",
     "graphql": "^14.6.0",
     "knex": "^0.20.9",
-    "koa": "^2.11.0"
+    "koa": "^2.11.0",
+    "mysql": "^2.18.1"
   },
   "devDependencies": {
     "@types/koa": "^2.11.1",
     "@types/tape": "^4.2.34",
     "tape": "^4.13.0",
     "tsc-watch": "^4.1.0",
-    "typescript": "^3.7.5"
+    "typescript": "^3.7.5",
+    "ts-node": "^8.6.2"
   }
 }

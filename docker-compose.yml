@@ -13,6 +13,7 @@ services:
       - DB_PORT=3306
       - DB_USER=root
       - DB_PASSWORD=secret
+      - DB_DB=milli_db
     ports:
       # server
       - "8080:8080"
