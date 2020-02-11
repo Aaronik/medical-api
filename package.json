@@ -6,12 +6,15 @@
   "scripts": {
     "build": "rm -rf dist && tsc",
     "build:watch": "rm -rf dist && tsc -w",
-    "up": "docker-compose up",
-    "mysql-connect": "docker-compose run mysql-client",
     "start": "node dist/server.js",
     "start:dev": "tsc-watch --onSuccess 'node dist/server.js'",
+    "start:docker": "docker-compose up",
+    "up": "npm run start:docker # convenience",
     "clean": "rm -rf node_modules dist",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "sql-connect": "docker-compose run mysql-client",
+    "sh-connect": "docker-compose run server sh",
+    "delete-volumes": "docker-compose down && docker volume rm bridge-api_mysql-data"
   },
   "repository": {
     "type": "git",
