@@ -1,0 +1,41 @@
+version: '3.4'
+
+volumes:
+  mysql-data: {}
+
+services:
+  server:
+    build: .
+    command: npm run start:dev
+    environment:
+      - PORT=8080
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=secret
+    ports:
+      # server
+      - "8080:8080"
+      # GraphQL
+      - "3000:3000"
+    links:
+      - mysql
+    volumes:
+      - .:/usr/src/bridge-server
+
+  mysql:
+    image: mysql:5.7
+    environment:
+      - MYSQL_DATABASE=milli_db
+      - MYSQL_ROOT_PASSWORD=secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql:rw
+
+  # e.g. docker-compose run mysql-client -e 'show tables'
+  mysql-client:
+    depends_on:
+      - mysql
+    image: mysql:5.7
+    entrypoint: mysql milli_db -h mysql -uroot -psecret

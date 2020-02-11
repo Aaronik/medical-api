@@ -1,0 +1,38 @@
+{
+  "name": "bridge-api",
+  "version": "0.0.0",
+  "description": "A GQL server that bridges external APIs and maybe more...",
+  "main": "server.ts",
+  "scripts": {
+    "build": "rm -rf dist && tsc",
+    "build:watch": "rm -rf dist && tsc -w",
+    "up": "docker-compose up",
+    "mysql-connect": "docker-compose run mysql-client",
+    "start": "node dist/server.js",
+    "start:dev": "tsc-watch --onSuccess 'node dist/server.js'",
+    "clean": "rm -rf node_modules dist",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MilliHealth/bridge-api.git"
+  },
+  "author": "Aaron Sullivan",
+  "bugs": {
+    "url": "https://github.com/MilliHealth/bridge-api/issues"
+  },
+  "homepage": "https://github.com/MilliHealth/bridge-api#readme",
+  "dependencies": {
+    "apollo-server-koa": "^2.10.0",
+    "graphql": "^14.6.0",
+    "knex": "^0.20.9",
+    "koa": "^2.11.0"
+  },
+  "devDependencies": {
+    "@types/koa": "^2.11.1",
+    "@types/tape": "^4.2.34",
+    "tape": "^4.13.0",
+    "tsc-watch": "^4.1.0",
+    "typescript": "^3.7.5"
+  }
+}
