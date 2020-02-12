@@ -5,16 +5,21 @@
     "module": "commonjs",
     "sourceMap": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "esModuleInterop": true,
     "typeRoots": [
       "node_modules/@types"
-    ]
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["src/*"],
+      "test/*": ["test/*"]
+    }
   },
   "include": [
     "src/**/**.ts",
     "test/**/**.ts",
-    "server.ts"
+    "server.ts",
+    "knexfile.ts"
   ],
   "exclude": [
     "node_modules"

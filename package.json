@@ -35,14 +35,11 @@
   "homepage": "https://github.com/MilliHealth/bridge-api#readme",
   "dependencies": {
     "apollo-server": "^2.10.0",
-    "apollo-server-koa": "^2.10.0",
     "graphql": "^14.6.0",
     "knex": "^0.20.9",
-    "koa": "^2.11.0",
     "mysql": "^2.18.1"
   },
   "devDependencies": {
-    "@types/koa": "^2.11.1",
     "@types/tape": "^4.2.34",
     "tape": "^4.13.0",
     "tsc-watch": "^4.1.0",

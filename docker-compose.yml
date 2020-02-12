@@ -5,7 +5,9 @@ volumes:
 
 services:
   server:
-    build: .
+    image: node:12.13.1-alpine
+    user: node
+    working_dir: /usr/src/bridge-server
     command: npm run start:dev
     environment:
       - PORT=8080
@@ -15,8 +17,6 @@ services:
       - DB_PASSWORD=secret
       - DB_DB=milli_db
     ports:
-      # server
-      - "8080:8080"
       # GraphQL
       - "4000:4000"
     links:
