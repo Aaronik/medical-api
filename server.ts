@@ -15,6 +15,14 @@ const server = new ApolloServer({
       users: async (parent, args, context, info) => {
         return await db.User.findAll()
       }
+    },
+    Mutation: {
+      createUser: async (parent, args, context, info) => {
+        const { email, password } = args
+        const user = await db.User.create({ email, password })
+        console.log('created User:', user)
+        return user
+      }
     }
   }
 })

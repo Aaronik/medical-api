@@ -16,4 +16,8 @@ export default gql`
     user(id: Int): User
     users: [User]
   }
+
+  type Mutation {
+    createUser(email:String, password:String): User
+  }
 `
