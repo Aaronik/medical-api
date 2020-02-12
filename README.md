@@ -12,7 +12,12 @@ be running. You can modify code and the server will automatically restart on cha
 
 We expose `http://localhost:4000` (using docker or not). This is a webpage you can visit to find
 GraphQL Playground. With this tool, you can easily see your schema and run sample queries. It's
-super handy.
+super handy. Note you can change the port by specifying the `PORT` environment variable.
+
+#### Migrations
+
+To add a migration, please use the command `npm run generate-migration`. This will create a new
+migration file in the 'migrations/' directory with up/down scaffolding.
 
 ## Deployment
 
@@ -21,6 +26,7 @@ However, if you want to launch it raw, you can:
 
 * Create a mysql instance somewhere
 * Populate the following environment variables:
+  * `PORT`: What port the GQL server should listen on
   * `DB_HOST`: the database hostname (for use with the `-h` flag for the `mysql-client` program)
   * `DB_USER`: the user
   * `DB_PASSWORD`: the password
