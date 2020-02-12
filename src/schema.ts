@@ -1,12 +1,8 @@
 import { gql } from 'apollo-server'
 
 export default gql`
-  type Test {
-    tables: [String]
-  }
-
   type User {
-    id: String
+    id: Int
     name: String
     email: String
     imageUrl: String!
@@ -17,7 +13,7 @@ export default gql`
   }
 
   type Query {
-    test: Test
-    user(id: String): User
+    user(id: Int): User
+    users: [User]
   }
 `

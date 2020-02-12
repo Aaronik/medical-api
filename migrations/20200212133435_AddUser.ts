@@ -11,7 +11,8 @@ export async function up(knex: Knex): Promise<any> {
       birthday varchar(255),
       joinDate datetime DEFAULT NOW(),
       lastVisit datetime DEFAULT NOW(),
-      adherence int(11)
+      adherence int(11),
+      passwordHash char(60) NOT NULL
     ) ENGINE=InnoDB
   `)
 }
@@ -19,7 +20,7 @@ export async function up(knex: Knex): Promise<any> {
 
 export async function down(knex: Knex): Promise<any> {
   await knex.raw(`
-    DROP TABLE user;
+    DROP TABLE User;
   `)
 }
 

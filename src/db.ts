@@ -6,10 +6,12 @@ const knex = Knex(knexConfig)
 
 export default {
   User: {
-    findById: async (id: string) => knex.raw('SELECT * FROM user WHERE id = ?', [id]),
-    findAll: async () => knex.raw('SELECT * FROM user'),
+    findById: async (id: string) => {
+      const user = await knex('User').select().where({ id })
+      return user[0]
+    },
+    findAll: async () => {
+      return knex('User').select()
+    },
   },
-  Test: {
-    listTables: async () => knex.raw('show tables;'),
-  }
 }
