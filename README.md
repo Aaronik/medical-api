@@ -4,9 +4,18 @@ A GQL server that bridges external APIs and maybe more... 🔥🔥🔥
 ## Development
 
 We use docker for development, so you'll need to have `docker` and `docker-compose` installed.
+You'll also need `npm` so you can install dependencies.
 
-To start developing, all you need to run is `npm run start:docker`. From there the server will
-be running. You can modify code and the server will automatically restart on changes.
+The first time you start developing on this app, run:
+
+* `npm install`
+* `npm run start:docker`
+* `npm run migrations:docker:run`
+
+Every subsequent time you can just run `npm run start:docker`. A convenience
+script is `npm run up`, which is just an alias for `start:docker`. I personally have `npm run`
+aliased to `nr`, so my flow looks like `nr up` and then I start editing code. The docker instance
+is watching for code modifications and automatically restarts on changes.
 
 #### GQL Development
 
@@ -31,4 +40,5 @@ However, if you want to launch it raw, you can:
   * `DB_USER`: the user
   * `DB_PASSWORD`: the password
   * `DB_DB`: the name of the database we use.
-* From there, you can run `npm run start` and the node server will start, connecting to your mysql instance.
+* From there, you can run `npm run build` to transpile the server.
+* Then, `npm run start` and the node server will start.
