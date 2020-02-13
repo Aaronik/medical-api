@@ -12,10 +12,10 @@ type ApolloOptions = ApolloServerExpressConfig & {
   onHealthCheck?: (req: Request) => Promise<any>;
 }
 
-// Abstracted so we can inject db into it. This is so we can run tests and our dev/prod server
+// Abstracted so we can inject our db conection into it. This is so we can run tests and our dev/prod server
 // against different databases.
 //
-// Just call it by passing in db.
+// Just call it by passing in an already connected knex object.
 export default function Server(knex: Knex) {
   const db = Db(knex)
 
