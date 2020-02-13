@@ -1,5 +1,5 @@
 import { ApolloServerExpressConfig, CorsOptions } from 'apollo-server-express'
-import { ApolloServer } from 'apollo-server'
+import { ApolloServer, AuthenticationError, UserInputError, ForbiddenError, ValidationError } from 'apollo-server'
 import typeDefs from 'src/schema'
 import { Request } from 'express'
 import Db from 'src/db'
@@ -34,6 +34,8 @@ export default function Server(knex: Knex) {
       Mutation: {
         createUser: async (parent, args, context, info) => {
           const { email, password } = args
+          const existingUser = await db.User.findByEmail(email)
+          if (existingUser) throw new ValidationError(`A user with the email ${email} already exists!`)
           return db.User.create({ email, password })
         }
       }

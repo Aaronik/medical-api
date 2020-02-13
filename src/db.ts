@@ -15,6 +15,10 @@ function Db(knex: Knex) {
         const user = await knex('User').select().where({ id })
         return user[0]
       },
+      findByEmail: async(email: string) => {
+        const user = await knex('User').select().where({ email })
+        return user[0]
+      },
       findAll: async () => {
         return knex('User').select()
       },
