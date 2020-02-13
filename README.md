@@ -28,6 +28,15 @@ super handy. Note you can change the port by specifying the `PORT` environment v
 To add a migration, please use the command `npm run generate-migration`. This will create a new
 migration file in the 'migrations/' directory with up/down scaffolding.
 
+#### Testing
+
+The tests can be run by first bringing up the docker services, then running the test command.
+
+* `npm run start:docker`
+* `npm run test`
+
+You can activate a test watcher with `npm run test:watch`.
+
 ## Deployment
 
 If docker is available, you can simply run `NODE_ENV=production npm run start:docker`.
