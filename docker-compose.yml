@@ -2,6 +2,7 @@ version: '3.4'
 
 volumes:
   mysql-data: {}
+  mysql-data-test: {}
 
 services:
   server:
@@ -24,6 +25,7 @@ services:
     volumes:
       - .:/usr/src/bridge-server
 
+  # Dev DB
   mysql:
     image: mysql:5.7
     environment:
@@ -34,9 +36,28 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql:rw
 
+  # Test DB
+  mysql-test:
+    image: mysql:5.7
+    environment:
+      - MYSQL_DATABASE=milli_db_test
+      - MYSQL_ROOT_PASSWORD=secret
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data-test:/var/lib/mysql:rw
+
+  # Easy ability to get into CLI on dev server's mysql DB
   # e.g. docker-compose run mysql-client -e 'show tables'
   mysql-client:
     depends_on:
       - mysql
     image: mysql:5.7
     entrypoint: mysql milli_db -h mysql -uroot -psecret
+
+  # Same, but for the test database. Help to debug tests and whatnot.
+  mysql-client-test:
+    depends_on:
+      - mysql-test
+    image: mysql:5.7
+    entrypoint: mysql milli_db_test -h mysql-test -uroot -psecret

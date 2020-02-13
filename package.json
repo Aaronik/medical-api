@@ -11,6 +11,7 @@
     "start:docker": "docker-compose up",
     "up": "npm run start:docker # convenience",
     "sql-connect": "docker-compose run mysql-client",
+    "sql-test-connect": "docker-compose run mysql-client-test",
     "sh-connect": "docker-compose run server sh",
     "generate-migration": "knex migrate:make -x ts",
     "migrations:raw:run": "knex migrate:latest",
@@ -19,9 +20,9 @@
     "migrations:docker:revert": "docker-compose run server npm run migrations:raw:revert",
     "delete-volumes": "docker-compose down && docker volume rm bridge-api_mysql-data",
     "clean": "rm -rf node_modules dist",
-    "test:unit": "node dist/test/unit/*.js | tap-summary",
-    "test:integration": "node dist/test/integration/*.js | tap-summary",
-    "test": "node dist/test/**/*.js | tap-summary",
+    "test:unit": "ts-node -r tsconfig-paths/register test/unit/*.ts | tap-summary",
+    "test:integration": "ts-node -r tsconfig-paths/register test/integration/*.ts | tap-summary",
+    "test": "ts-node -r tsconfig-paths/register test/**/*.ts | tap-summary",
     "test:watch": "tsc-watch --onSuccess 'npm run test'"
   },
   "repository": {
@@ -43,6 +44,7 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
     "@types/tape": "^4.2.34",
+    "apollo-server-testing": "^2.10.0",
     "tap-summary": "^4.0.0",
     "tape": "^4.13.0",
     "ts-node": "^8.6.2",

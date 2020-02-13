@@ -4,7 +4,6 @@
     "target": "es2017",
     "module": "commonjs",
     "sourceMap": true,
-    "noUnusedLocals": true,
     "esModuleInterop": true,
     "typeRoots": [
       "node_modules/@types"
@@ -19,8 +18,7 @@
   "include": [
     "src/**/**.ts",
     "test/**/**.ts",
-    "server.ts",
-    "knexfile.ts"
+    "server.ts"
   ],
   "exclude": [
     "node_modules"
