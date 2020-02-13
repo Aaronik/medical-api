@@ -32,9 +32,7 @@ export default function apolloOptions(db: ReturnType<typeof Db>): ApolloOptions 
       Mutation: {
         createUser: async (parent, args, context, info) => {
           const { email, password } = args
-          const user = await db.User.create({ email, password })
-          console.log('created User:', user)
-          return user
+          return db.User.create({ email, password })
         }
       }
     }

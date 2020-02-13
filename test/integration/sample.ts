@@ -30,14 +30,15 @@ const CREATE_USER = gql`
 `
 
 test('gql test', async t => {
-  // await db._util.resetDB()
+  await db._util.resetDB()
 
   const { mutate } = createTestClient(server)
 
   const email = 'test@email.com'
   const password = 'testPass'
 
-  const user = await mutate({ mutation: CREATE_USER, variables: { email, password }})
+  const resp = await mutate({ mutation: CREATE_USER, variables: { email, password }})
+  const user = resp.data.createUser
 
   t.deepEqual(user, { email, id: 1 })
 
