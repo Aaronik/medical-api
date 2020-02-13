@@ -22,8 +22,8 @@ function Db(knex: Knex) {
         const salt = bcrypt.genSaltSync(8)
         const passwordHash = bcrypt.hashSync(password, salt)
         const role = 'DOCTOR' // TODO
-        const newUserId = await knex('User').insert({ passwordHash, role, email }).returning('id')
-        return db.User.findById(newUserId[0])
+        const newUserId = await knex('User').insert({ passwordHash, role, email })
+        return db.User.findById(newUserId[0].toString())
       }
     }
   }

@@ -1,7 +1,9 @@
 import { ApolloServerExpressConfig, CorsOptions } from 'apollo-server-express'
+import { ApolloServer } from 'apollo-server'
 import typeDefs from 'src/schema'
 import { Request } from 'express'
 import Db from 'src/db'
+import Knex from 'knex'
 
 // Sigh, this is just how Apollo structures it. It'd be great if they'd export this type
 // but they inline it.
@@ -13,13 +15,13 @@ type ApolloOptions = ApolloServerExpressConfig & {
 // Abstracted so we can inject db into it. This is so we can run tests and our dev/prod server
 // against different databases.
 //
-// Just call it by passing in db. See server.ts
-export default function apolloOptions(db: ReturnType<typeof Db>): ApolloOptions {
-  return {
-    typeDefs,
-    context: (obj) => {
+// Just call it by passing in db.
+export default function Server(knex: Knex) {
+  const db = Db(knex)
 
-    },
+  const apolloOptions: ApolloOptions = {
+    typeDefs,
+    context: (obj) => {},
     resolvers: {
       Query: {
         user: async (parent, args, context, info) => {
@@ -37,4 +39,6 @@ export default function apolloOptions(db: ReturnType<typeof Db>): ApolloOptions 
       }
     }
   }
+
+  return new ApolloServer(apolloOptions)
 }

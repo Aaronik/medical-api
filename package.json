@@ -2,11 +2,11 @@
   "name": "bridge-api",
   "version": "0.0.0",
   "description": "A GQL server that bridges external APIs and maybe more...",
-  "main": "server.ts",
+  "main": "index.ts",
   "scripts": {
     "build": "rm -rf dist && tsc",
     "build:watch": "npm run build -w",
-    "start": "cp tsconfig.json dist/ && cd dist && node -r tsconfig-paths/register server.js",
+    "start": "cp tsconfig.json dist/ && cd dist && node -r tsconfig-paths/register index.js",
     "start:dev": "tsc-watch --onSuccess 'npm run start'",
     "start:docker": "docker-compose up",
     "up": "npm run start:docker # convenience",

@@ -1,7 +1,6 @@
-import { ApolloServer } from 'apollo-server'
 import Db from 'src/db'
 import Knex from 'knex'
-import apolloOptions from 'src/apollo-options'
+import Server from 'src/server'
 
 // TODO Alright, we could also use a more complex knexfile.ts that has multiple
 // NODE_ENV entries and then set that NODE_ENV thing for testing / production, etc.
@@ -15,8 +14,7 @@ const knex = Knex({
   }
 })
 
-const db = Db(knex)
-const server = new ApolloServer(apolloOptions(db))
+const server = Server(knex)
 
 server.listen(process.env.PORT).then(({ url }) => {
   console.log(`🚀 GQL server ready at ${url}`)
