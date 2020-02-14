@@ -50,6 +50,7 @@ export default function Server(knex: Knex) {
         },
         authenticate: async (parent, args, context, info) => {
           const { email, password } = args
+          if (!email || !password) throw new UserInputError(`Must provide valid email and password.`)
           return db.Auth.authenticate(email, password)
         },
         deauthenticate: async (parent, args, context, info) => {
