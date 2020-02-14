@@ -49,5 +49,6 @@ However, if you want to launch it raw, you can:
   * `DB_USER`: the user
   * `DB_PASSWORD`: the password
   * `DB_DB`: the name of the database we use.
+  * `DB_PORT`: the port the mysql database is listening on
 * From there, you can run `npm run build` to transpile the server.
 * Then, `npm run start` and the node server will start.
