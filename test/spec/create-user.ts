@@ -11,23 +11,7 @@ const CREATE_USER = gql`
 `
 
 export default function(test, knex, db, server) {
-  test('Creating Users Via GQL', async t => {
-    await db._util.resetDB()
-
-    const { mutate } = createTestClient(server)
-
-    const email = 'test@email.com'
-    const password = 'testPass'
-
-    const resp = await mutate({ mutation: CREATE_USER, variables: { email, password }})
-    const user = resp.data.createUser
-
-    t.deepEqual(user, { email, id: 1 })
-
-    t.end()
-  })
-
-  test('Expecting Errors Duplicating User Creation', async t => {
+  test('GQL Create User -> Create Duplicate User', async t => {
     await db._util.resetDB()
 
     const { mutate } = createTestClient(server)

@@ -31,7 +31,7 @@ const DEAUTH = gql`
 `
 
 export default function(test, knex, db, server) {
-  test('Authenticating via GQL', async t => {
+  test('GQL Create User -> Auth -> Me -> Deauth', async t => {
     await db._util.resetDB()
 
     const signedOutClient = createTestClient(server)
