@@ -56,9 +56,20 @@ export default function Server(knex: Knex) {
         deauthenticate: async (parent, args, context, info) => {
           return db.Auth.deauthenticate(context.token)
         }
+      },
+      QuestionMeta: {
+        __resolveType: (meta: string) => {
+          return meta
+        }
+      },
+      Question: {
+        __resolveType: (obj) => {
+          return obj.type
+        }
       }
-    }
+    },
   }
 
   return new ApolloServer(apolloOptions)
+
 }
