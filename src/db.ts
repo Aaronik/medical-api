@@ -17,6 +17,7 @@ const hashPassword = (email: string, password: string) => {
 function Db(knex: Knex) {
 
   const db = {
+
     _util: {
       resetDB: async () => {
         await knex.migrate.rollback(undefined, true)
@@ -24,46 +25,66 @@ function Db(knex: Knex) {
         tokenMap = {}
       }
     },
+
     User: {
+
+      _userTables: () => {
+        return knex('User')
+          .join('UserHealth', 'User.id', 'UserHealth.userId')
+          .join('UserLogin', 'User.id', 'UserLogin.userId')
+      },
+
       findById: async (id: number) => {
-        const user = await knex('User').select().where({ id })
-        return user[0]
+        return await db.User._userTables().first().where({ id })
       },
+
       findByEmail: async (email: string) => {
-        const user = await knex('User').select().where({ email })
-        return user[0]
+        return await db.User._userTables().first().where({ email })
       },
+
       findByAuthToken: async (token: string): Promise<User | false> => {
         const userId = tokenMap[token]
         if (!userId) return false
         return db.User.findById(userId)
       },
+
       findAll: async () => {
-        return knex('User').select()
+        return db.User._userTables().select()
       },
+
       create: async (email: string, password: string) => {
         const passwordHash = hashPassword(email, password)
         const role = 'DOCTOR' // TODO
-        const newUserId = await knex('User').insert({ passwordHash, role, email })
-        return db.User.findById(newUserId[0])
+        const [userId] = await knex('User').insert({ role, email })
+        await knex('UserLogin').insert({ userId, passwordHash })
+        await knex('UserHealth').insert({ userId })
+        return db.User.findById(userId)
       },
+
     },
+
     Auth: {
+
       authenticate: async (email: string, password: string) => {
         const user = await db.User.findByEmail(email)
         if (!user) throw new AuthenticationError('Cannot find user with that email address!')
+
         const hasCorrectPassword = bcrypt.compareSync(password, user.passwordHash)
         if (!hasCorrectPassword) throw new AuthenticationError('Incorrect email/password combination.')
+
         const token = uuid()
         tokenMap[token] = user.id
+
         return token
       },
+
       deauthenticate: async (token: string) => {
         const userId = tokenMap[token]
         if (!userId) throw new AuthenticationError('Invalid token.')
         delete tokenMap[token]
         return true
       },
+
     },
   }
 

@@ -22,7 +22,8 @@ export default function Server(knex: Knex) {
   const apolloOptions: ApolloOptions = {
     typeDefs,
     context: async (ctx) => {
-      const token = ctx.req.headers.authorization
+      const token = ctx.req.headers?.authorization
+      if (!token) return {}
       const user = await db.User.findByAuthToken(token)
       return { user, token }
     },

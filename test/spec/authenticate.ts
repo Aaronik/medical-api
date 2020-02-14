@@ -40,22 +40,22 @@ export default function(test, knex, db, server) {
     const password = 'testPass'
 
     const createResp = await signedOutClient.mutate({ mutation: CREATE_USER, variables: { email, password }})
-    const user = createResp.data.createUser
+    const user = createResp?.data?.createUser
 
     t.deepEqual(user, { email, id: 1 })
 
     const authResp = await signedOutClient.mutate({ mutation: AUTHENTICATE, variables: { email, password }})
-    const token = authResp.data.authenticate
+    const token = authResp?.data?.authenticate
 
     t.assert(!!token, 'Should have received a token, but instead got: ' + token)
 
     const signedInClient = createTestClient(server, { authorization: token })
 
     const meResp = await signedInClient.query({ query: ME })
-    t.equal(email, meResp.data.me.email, 'After creating then authenticating a user, a request for "me" did not work.')
+    t.equal(email, meResp?.data?.me?.email, 'After creating then authenticating a user, a request for "me" did not work.')
 
     const deauthResp = await signedInClient.mutate({ mutation: DEAUTH })
-    t.equal(true, deauthResp.data.deauthenticate)
+    t.equal(true, deauthResp?.data?.deauthenticate)
 
     t.end()
   })
