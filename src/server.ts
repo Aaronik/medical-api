@@ -21,7 +21,11 @@ export default function Server(knex: Knex) {
 
   const apolloOptions: ApolloOptions = {
     typeDefs,
-    context: (obj) => {},
+    context: async (ctx) => {
+      const token = ctx.req.headers.authorization
+      const user = await db.User.findByAuthToken(token)
+      return { user }
+    },
     resolvers: {
       Query: {
         user: async (parent, args, context, info) => {
@@ -29,15 +33,24 @@ export default function Server(knex: Knex) {
         },
         users: async (parent, args, context, info) => {
           return await db.User.findAll()
-        }
+        },
+        me: async (parent, args, context, info) => {
+          if (context.user) return context.user
+          throw new AuthenticationError('No user is currently authenticated.')
+        },
       },
       Mutation: {
         createUser: async (parent, args, context, info) => {
           const { email, password } = args
+          if (!email || !password) throw new UserInputError(`Must provide valid email and password.`)
           const existingUser = await db.User.findByEmail(email)
           if (existingUser) throw new ValidationError(`A user with the email ${email} already exists!`)
-          return db.User.create({ email, password })
-        }
+          return db.User.create(email, password)
+        },
+        authenticate: async (parent, args, context, info) => {
+          const { email, password } = args
+          return db.Auth.authenticate(email, password)
+        },
       }
     }
   }

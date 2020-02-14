@@ -1,8 +1,8 @@
 import { gql } from 'apollo-server'
-import { createTestClient } from 'apollo-server-testing'
+import createTestClient from 'test/create-test-client'
 
 const CREATE_USER = gql`
-  mutation CreateUser($email: String, $password: String){
+  mutation ($email: String, $password: String){
     createUser(email: $email, password: $password) {
       id
       email
@@ -10,8 +10,8 @@ const CREATE_USER = gql`
   }
 `
 
-export default async function(test, knex, db, server) {
-  await test('Creating Users Via GQL', async t => {
+export default function(test, knex, db, server) {
+  test('Creating Users Via GQL', async t => {
     await db._util.resetDB()
 
     const { mutate } = createTestClient(server)
@@ -27,7 +27,7 @@ export default async function(test, knex, db, server) {
     t.end()
   })
 
-  await test('Expecting Errors Duplicating User Creation', async t => {
+  test('Expecting Errors Duplicating User Creation', async t => {
     await db._util.resetDB()
 
     const { mutate } = createTestClient(server)

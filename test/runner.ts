@@ -20,7 +20,7 @@ const db = Db(knex)
 const server = Server(knex)
 const files = fs.readdirSync(__dirname + '/spec')
 
-const executions = files.map(async (file, idx) => {
+const executions = files.map((file, idx) => {
   return new Promise((resolve, reject) => {
     import('./spec/' + file).then(resp => {
       const moduleTestFn = resp.default
