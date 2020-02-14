@@ -12,18 +12,19 @@ import test from 'tape'
 //
 // Usage:
 // 1) Create a file in the spec/ folder.
-// 2) Export an async function with the following signature:
-//    export default async function(test, knex, db, server).
+// 2) Export a function with the signature defined as TModuleExport below.
 // 3) Enjoy yourself. Happy testing!
 
 const db = Db(knex)
 const server = Server(knex)
 const files = fs.readdirSync(__dirname + '/spec')
 
+export type TModuleExport = (testx: typeof test, knexx: typeof knex, dbx: typeof db, serverx: typeof server) => void
+
 const executions = files.map((file, idx) => {
   return new Promise((resolve, reject) => {
     import('./spec/' + file).then(resp => {
-      const moduleTestFn = resp.default
+      const moduleTestFn = resp.test
       moduleTestFn(test, knex, db, server)
     })
 

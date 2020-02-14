@@ -1,5 +1,6 @@
 import { gql } from 'apollo-server'
 import createTestClient from 'test/create-test-client'
+import { TModuleExport } from 'test/runner'
 
 const CREATE_USER = gql`
   mutation ($email: String, $password: String){
@@ -16,7 +17,7 @@ const AUTHENTICATE = gql`
   }
 `
 
-export default function(test, knex, db, server) {
+export const test: TModuleExport = (test, knex, db, server) => {
   test('GQL Create User -> Auth with Wrong Creds', async t => {
     await db._util.resetDB()
 
