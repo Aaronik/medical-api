@@ -24,27 +24,38 @@ const ME = gql`
   }
 `
 
+const DEAUTH = gql`
+  mutation {
+    deauthenticate
+  }
+`
+
 export default function(test, knex, db, server) {
   test('Authenticating via GQL', async t => {
     await db._util.resetDB()
 
-    const { mutate, query } = createTestClient(server)
+    const signedOutClient = createTestClient(server)
 
     const email = 'test@email.com'
     const password = 'testPass'
 
-    const createResp = await mutate({ mutation: CREATE_USER, variables: { email, password }})
+    const createResp = await signedOutClient.mutate({ mutation: CREATE_USER, variables: { email, password }})
     const user = createResp.data.createUser
 
     t.deepEqual(user, { email, id: 1 })
 
-    const authResp = await mutate({ mutation: AUTHENTICATE, variables: { email, password }})
+    const authResp = await signedOutClient.mutate({ mutation: AUTHENTICATE, variables: { email, password }})
     const token = authResp.data.authenticate
 
     t.assert(!!token, 'Should have received a token, but instead got: ' + token)
 
-    const meResp = await (createTestClient(server, { authorization: token })).query({ query: ME })
+    const signedInClient = createTestClient(server, { authorization: token })
+
+    const meResp = await signedInClient.query({ query: ME })
     t.equal(email, meResp.data.me.email, 'After creating then authenticating a user, a request for "me" did not work.')
+
+    const deauthResp = await signedInClient.mutate({ mutation: DEAUTH })
+    t.equal(true, deauthResp.data.deauthenticate)
 
     t.end()
   })

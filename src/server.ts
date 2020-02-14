@@ -24,7 +24,7 @@ export default function Server(knex: Knex) {
     context: async (ctx) => {
       const token = ctx.req.headers.authorization
       const user = await db.User.findByAuthToken(token)
-      return { user }
+      return { user, token }
     },
     resolvers: {
       Query: {
@@ -51,6 +51,9 @@ export default function Server(knex: Knex) {
           const { email, password } = args
           return db.Auth.authenticate(email, password)
         },
+        deauthenticate: async (parent, args, context, info) => {
+          return db.Auth.deauthenticate(context.token)
+        }
       }
     }
   }
