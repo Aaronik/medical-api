@@ -4,6 +4,7 @@ import typeDefs from 'src/schema'
 import { Request } from 'express'
 import Db from 'src/db'
 import Knex from 'knex'
+import { User, Role } from 'src/types.d'
 
 // Sigh, this is just how Apollo structures it. It'd be great if they'd export this type
 // but they inline it.
@@ -22,6 +23,13 @@ const enforceArgs = <_, T>(args: any, ...fields: string[]) => {
   })
 
   return args
+}
+
+// Helper to ensure user has sufficient permissions. Pass in however many roles,
+// and the helper will throw if the user doesn't satisfy any of those roles. Will
+// always fail if no user was passed in.
+const enforceRoles = (user?: User, ...roles: Role[]) => {
+  if (!user || !roles.includes(user.role)) throw new ForbiddenError('Insufficient permissions.')
 }
 
 // Abstracted so we can inject our db conection into it. This is so we can run tests and our dev/prod server
