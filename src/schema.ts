@@ -21,11 +21,18 @@ export default gql`
     id: Int
     name: String
     email: String
+    role: Role
     joinDate: String
     lastVisit: String
     adherence: Int
     imageUrl: String
     birthday: Int
+  }
+
+  enum Role {
+    ADMIN,
+    DOCTOR,
+    PATIENT
   }
 
   type Questionnaire {

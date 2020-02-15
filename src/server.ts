@@ -12,6 +12,18 @@ type ApolloOptions = ApolloServerExpressConfig & {
   onHealthCheck?: (req: Request) => Promise<any>;
 }
 
+// Helper to streamline the enforcement / destructuring of GQL argument
+// TODO It'd be rad if the output type of this actually utilized the fields given
+// so as to prevent something like const { id } = enforceArgs(args, 'field', 'gnoll', 'grassland')
+// (id not being on the list of permitted arguments, so not destructurable)
+const enforceArgs = <_, T>(args: any, ...fields: string[]) => {
+  fields.forEach(field => {
+    if (!args.hasOwnProperty(field)) throw new UserInputError(`You must provide the following fields: ${fields}`)
+  })
+
+  return args
+}
+
 // Abstracted so we can inject our db conection into it. This is so we can run tests and our dev/prod server
 // against different databases.
 //
@@ -47,7 +59,7 @@ export default function Server(knex: Knex) {
         },
 
         questionnaire: async (parent, args, context, info) => {
-
+          const { id } = enforceArgs(args, 'id')
         },
 
       },
@@ -55,16 +67,14 @@ export default function Server(knex: Knex) {
       Mutation: {
 
         createUser: async (parent, args, context, info) => {
-          const { email, password } = args
-          if (!email || !password) throw new UserInputError(`Must provide valid email and password.`)
+          const { email, password } = enforceArgs(args, 'email', 'password')
           const existingUser = await db.User.findByEmail(email)
           if (existingUser) throw new ValidationError(`A user with the email ${email} already exists!`)
           return db.User.create(email, password)
         },
 
         authenticate: async (parent, args, context, info) => {
-          const { email, password } = args
-          if (!email || !password) throw new UserInputError(`Must provide valid email and password.`)
+          const { email, password } = enforceArgs(args, 'email', 'password')
           return db.Auth.authenticate(email, password)
         },
 

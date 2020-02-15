@@ -5,6 +5,7 @@ export type User = {
   joinDate: number
   lastVisit: number
   passwordHash: string
+  role: 'ADMIN' | 'DOCTOR' | 'PATIENT'
   imageUrl?: string
   birthday?: string
   adherence?: number

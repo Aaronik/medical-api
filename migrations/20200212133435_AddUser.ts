@@ -4,7 +4,7 @@ export async function up(knex: Knex): Promise<any> {
   await knex.raw(`
     CREATE TABLE User (
       id int(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,
-      role varchar(255) NOT NULL,
+      role ENUM('ADMIN', 'DOCTOR', 'PATIENT'),
       email varchar(330) NOT NULL,
       name varchar(255),
       imageUrl varchar(255),
