@@ -37,8 +37,6 @@ export async function up(knex: Knex): Promise<any> {
 
 
 export async function down(knex: Knex): Promise<any> {
-  await knex.raw(`DROP TABLE UserHealth;`)
-  await knex.raw(`DROP TABLE UserLogin;`)
-  await knex.raw(`DROP TABLE User;`)
+  await knex.raw(`DROP TABLE UserHealth,UserLogin,User;`)
 }
 
