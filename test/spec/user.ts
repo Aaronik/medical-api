@@ -31,7 +31,64 @@ const DEAUTH = gql`
   }
 `
 
+
+const GET_USERS = gql`
+query {
+  users {
+    email
+  }
+}
+`
+
 export const test: TModuleExport = (test, knex, db, server) => {
+
+  test('trivial', async t => {
+    t.assert(true)
+    t.end()
+  })
+
+  test('GQL Create User -> Create User -> Get Users', async t => {
+    await db._util.resetDB()
+
+    const { mutate } = createTestClient(server)
+
+    const email1 = 'test@email.com'
+    const email2 = 'test2@email.com'
+    const password = 'testPass'
+
+    const createResp1 = await mutate({ mutation: CREATE_USER, variables: { email: email1, password }})
+    const createResp2 = await mutate({ mutation: CREATE_USER, variables: { email: email2, password }})
+
+    t.equal(createResp1.data?.createUser?.email, email1)
+    t.equal(createResp2.data?.createUser?.email, email2)
+
+    const usersResp = await mutate({ mutation: GET_USERS })
+
+    t.deepEqual(usersResp.data.users, [{ email: email1 }, { email: email2 }])
+
+    t.end()
+  })
+
+  test('GQL Create User -> Create Duplicate User', async t => {
+    await db._util.resetDB()
+
+    const { mutate } = createTestClient(server)
+
+    const email = 'test@email.com'
+    const password = 'testPass'
+
+    const resp = await mutate({ mutation: CREATE_USER, variables: { email, password }})
+    const user = resp.data?.createUser
+
+    t.equal(user?.email, email)
+
+    const resp2 = await mutate({ mutation: CREATE_USER, variables: { email, password }})
+    const message = resp2.errors[0]?.message
+    t.assert(message.includes('already exists'))
+
+    t.end()
+  })
+
   test('GQL Create User -> Auth -> Me -> Deauth', async t => {
     await db._util.resetDB()
 
@@ -60,5 +117,7 @@ export const test: TModuleExport = (test, knex, db, server) => {
 
     t.end()
   })
+
 }
+
 
