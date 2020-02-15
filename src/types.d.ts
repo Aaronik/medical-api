@@ -5,10 +5,16 @@ export type User = {
   joinDate: number
   lastVisit: number
   passwordHash: string
-  role: 'ADMIN' | 'DOCTOR' | 'PATIENT'
+  role: Role
   imageUrl?: string
   birthday?: string
   adherence?: number
+}
+
+export enum Role {
+  ADMIN = 'ADMIN',
+  DOCTOR = 'DOCTOR',
+  PATIENT = 'PATIENT'
 }
 
 export type Questionnaire = {
