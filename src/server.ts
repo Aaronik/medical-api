@@ -4,7 +4,7 @@ import typeDefs from 'src/schema'
 import { Request } from 'express'
 import Db from 'src/db'
 import Knex from 'knex'
-import { User, Role } from 'src/types.d'
+import { User, Role, QuestionMeta, Question } from 'src/types.d'
 
 // Sigh, this is just how Apollo structures it. It'd be great if they'd export this type
 // but they inline it.
@@ -68,6 +68,7 @@ export default function Server(knex: Knex) {
 
         questionnaire: async (parent, args, context, info) => {
           const { id } = enforceArgs(args, 'id')
+          return db.Questionnaire.findById(id)
         },
 
       },
@@ -88,19 +89,29 @@ export default function Server(knex: Knex) {
 
         deauthenticate: async (parent, args, context, info) => {
           return db.Auth.deauthenticate(context.token)
-        }
+        },
+
+        createQuestionnaire: async (parent, args, context, info) => {
+          const { title, questions } = enforceArgs(args, 'title', 'questions')
+          return db.Questionnaire.create({ title, questions })
+        },
 
       },
 
       QuestionMeta: {
-        __resolveType: (meta: string) => {
-          return meta
+        __resolveType: (meta: QuestionMeta) => {
+          return meta.type
         }
       },
 
       Question: {
-        __resolveType: (obj) => {
-          return obj.type
+        __resolveType: (obj: Question) => {
+          switch (obj.type) {
+            case 'BOOLEAN': return 'BooleanQuestion'
+            case 'TEXT': return 'TextQuestion'
+            case 'SINGLE_CHOICE': return 'SingleChoiceQuestion'
+            case 'MULTIPLE_CHOICE': return 'MultipleChoiceQuestion'
+          }
         }
       },
 

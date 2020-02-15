@@ -22,7 +22,7 @@ type Role = 'ADMIN' |'DOCTOR' |'PATIENT'
 export type Questionnaire = {
   id: number
   title: string
-  questions: [Question]
+  questions: Question[]
 }
 
 export type Question =
@@ -32,23 +32,23 @@ export type Question =
   | MultipleChoiceQuestion
 
 export interface BooleanQuestion extends QuestionMeta {
-  type: QuestionType.BOOLEAN
+  type: 'BOOLEAN'
   response?: Boolean
 }
 
 export interface TextQuestion extends QuestionMeta {
-  type: QuestionType.TEXT
+  type: 'TEXT'
   response?: string
 }
 
 export interface SingleChoiceQuestion extends QuestionMeta {
-  type: QuestionType.SINGLE_CHOICE
+  type: 'SINGLE_CHOICE'
   options: [QuestionOption]
   response?: string
 }
 
 export interface MultipleChoiceQuestion extends QuestionMeta {
-  type: QuestionType.MULTIPLE_CHOICE
+  type: 'MULTIPLE_CHOICE'
   options: [QuestionOption]
   response?: [string]
 }
@@ -59,17 +59,22 @@ export interface QuestionMeta {
   questionnaire?: Questionnaire
   text: string
   type: QuestionType
+  options?: QuestionOption[]
 }
 
 export type QuestionOption = {
+  questionId: number
+  question?: Question
   value: string
   text: string
 }
 
-export enum QuestionType {
-  TEXT = 'TEXT',
-  MULTIPLE_CHOICE = 'MULTIPLE_CHOICE',
-  SINGLE_CHOICE = 'SINGLE_CHOICE',
-  BOOLEAN = 'BOOLEAN'
-}
+export type QuestionType = 'TEXT' | 'MULTIPLE_CHOICE' | 'SINGLE_CHOICE' | 'BOOLEAN'
+
+// export enum QuestionType {
+//   TEXT = 'TEXT',
+//   MULTIPLE_CHOICE = 'MULTIPLE_CHOICE',
+//   SINGLE_CHOICE = 'SINGLE_CHOICE',
+//   BOOLEAN = 'BOOLEAN'
+// }
 

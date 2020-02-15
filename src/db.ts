@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import Knex from 'knex'
 import uuid from 'uuid/v4'
-import { User, Role } from 'src/types.d'
+import * as T from 'src/types.d'
 import { ApolloServer, AuthenticationError, UserInputError, ForbiddenError, ValidationError } from 'apollo-server'
 
 // For now, we're going to store authenticate tokens here. This is because authentication
@@ -17,7 +17,7 @@ const hashPassword = (email: string, password: string) => {
 // For CCPA/GDPR/HIPPA reasons, we break our users up into multiple tables.
 // This helper helps us put them back together again.
 const userTables = (knex: Knex) => {
-  return knex<User, User>('User')
+  return knex<T.User, T.User>('User')
     .join('UserHealth', 'User.id', 'UserHealth.userId')
     .join('UserLogin', 'User.id', 'UserLogin.userId')
 }
@@ -60,7 +60,7 @@ function Db(knex: Knex) {
         return await userTables(knex).first().where({ email })
       },
 
-      findByAuthToken: async (token: string): Promise<User | false> => {
+      findByAuthToken: async (token: string): Promise<T.User | false> => {
         const userId = tokenMap[token]
         if (!userId) return false
         return db.User.findById(userId)
@@ -70,13 +70,61 @@ function Db(knex: Knex) {
         return userTables(knex).select()
       },
 
-      create: async (email: string, password: string, role: Role) => {
+      create: async (email: string, password: string, role: T.Role) => {
         const passwordHash = hashPassword(email, password)
         const [userId] = await knex('User').insert({ role, email })
         await knex('UserLogin').insert({ userId, passwordHash })
         await knex('UserHealth').insert({ userId })
         return db.User.findById(userId)
       },
+
+    },
+
+    Questionnaire: {
+
+      findById: async (id: number) => {
+        const questionnaire = await knex<T.Questionnaire, T.Questionnaire>('Questionnaire').select('*').where({ id }).first()
+        const questions = await knex<T.Question, T.Question[]>('Question').select('*').where({ questionnaireId: id })
+
+        const ps = questions.map(q => knex<T.QuestionOption[], T.QuestionOption[]>('QuestionOption').select().where({ questionId: q.id }))
+        const [questionOptions] = await Promise.all(ps)
+
+        questionOptions.forEach(o => {
+          const question = questions.find((q) => q.id === o.questionId)
+          if (!question.options) question.options = []
+          question.options.push(o)
+        })
+
+        questionnaire.questions = questions
+
+        return questionnaire
+
+        // return knex<T.Questionnaire, T.Questionnaire>('Questionnaire')
+        //   .leftJoin('Question', 'Questionnaire.id', 'Question.questionnaireId')
+        //   .leftJoin('QuestionOption', 'Question.id', 'QuestionOption.questionId')
+        //   .select('*')
+        //   .first()
+      },
+
+      create: async (questionnaire: Omit<T.Questionnaire, 'id'>) => {
+        const [questionnaireId] = await knex('Questionnaire').insert({ title: questionnaire.title })
+
+        const ps = questionnaire.questions.map(async q => {
+          const [questionId] = await knex('Question').insert({ type: q.type, text: q.text, questionnaireId })
+
+          if (q.type !== 'SINGLE_CHOICE' && q.type !== 'MULTIPLE_CHOICE') return
+
+          const ps = q.options.map(async o => {
+            await knex('QuestionOption').insert({ questionId, value: o.value, text: o.text })
+          })
+
+          await Promise.all(ps)
+        })
+
+        await Promise.all(ps)
+
+        return db.Questionnaire.findById(questionnaireId)
+      }
 
     },
 

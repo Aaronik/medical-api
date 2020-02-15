@@ -33,7 +33,7 @@ export type TestModuleExport = (
 const executions = files.map((file, idx) => {
   return new Promise((resolve, reject) => {
     import('./spec/' + file).then(resp => {
-      const moduleTestFn = resp.test
+      const moduleTestFn = resp.test as TestModuleExport
       moduleTestFn(test, query, mutate, knex, db, server)
     })
 

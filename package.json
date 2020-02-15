@@ -18,10 +18,11 @@
     "migrations:raw:revert": "knex migrate:rollback",
     "migrations:docker:run": "docker-compose run server npm run migrations:raw:run",
     "migrations:docker:revert": "docker-compose run server npm run migrations:raw:revert",
+    "test": "ts-node -r tsconfig-paths/register test/runner.ts | tap-summary",
+    "test:watch": "tsc-watch --onSuccess 'npm run test'",
     "delete-volumes": "docker-compose down && docker volume rm bridge-api_mysql-data && docker volume rm bridge-api_mysql-data-test",
     "clean": "rm -rf node_modules dist",
-    "test": "ts-node -r tsconfig-paths/register test/runner.ts | tap-summary",
-    "test:watch": "tsc-watch --onSuccess 'npm run test'"
+    "test-db-to-dev-db": "mysqldump --column-statistics=0 -h 127.0.0.1 -P 3307 -uroot -psecret milli_db_test | mysql -h 127.0.0.1 -uroot -psecret milli_db"
   },
   "repository": {
     "type": "git",

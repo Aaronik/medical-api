@@ -1,6 +1,6 @@
 import Knex from 'knex'
 
-const knex = Knex({
+const config = {
   client: 'mysql',
   connection: {
     host: process.env.DB_HOST || '127.0.0.1',
@@ -9,6 +9,8 @@ const knex = Knex({
     database: process.env.DB_DB || 'milli_db_test',
     port: Number(process.env.DB_PORT) || 3307
   }
-})
+}
+
+const knex = Knex(config)
 
 export default knex

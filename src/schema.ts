@@ -15,6 +15,7 @@ export default gql`
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
     submitQuestionResponse: Boolean
+    createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
   }
 
   type User {
@@ -119,6 +120,17 @@ export default gql`
     "The question text the user sees"
     text: String
     type: QuestionType
+  }
+
+  input QuestionInput {
+    text: String
+    type: QuestionType
+    options: [QuestionOptionInput]
+  }
+
+  input QuestionOptionInput {
+    value: String
+    text: String
   }
 
 `

@@ -12,13 +12,14 @@
     "paths": {
       "src/*": ["src/*"],
       "test/*": ["test/*"],
-      "types/*": ["src/types/*"]
+      "types": ["src/types.d"]
     }
   },
   "include": [
     "src/**/**.ts",
     "test/**/**.ts",
-    "index.ts"
+    "index.ts",
+    "knexfile.ts"
   ],
   "exclude": [
     "node_modules"
