@@ -21,12 +21,12 @@ export const test: TModuleExport = (test, knex, db, server) => {
     const password = 'testPass'
 
     const resp = await mutate({ mutation: CREATE_USER, variables: { email, password }})
-    const user = resp.data.createUser
+    const user = resp.data?.createUser
 
-    t.equal(user.id, 1)
+    t.equal(user?.email, email)
 
     const resp2 = await mutate({ mutation: CREATE_USER, variables: { email, password }})
-    const message = resp2.errors[0].message
+    const message = resp2.errors[0]?.message
     t.assert(message.includes('already exists'))
 
     t.end()
