@@ -29,7 +29,7 @@ function Db(knex: Knex) {
     User: {
 
       _userTables: () => {
-        return knex('User')
+        return knex<User>('User')
           .join('UserHealth', 'User.id', 'UserHealth.userId')
           .join('UserLogin', 'User.id', 'UserLogin.userId')
       },
