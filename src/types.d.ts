@@ -1,4 +1,4 @@
-type User = {
+export type User = {
   id: number
   name: string
   email: string
@@ -9,5 +9,3 @@ type User = {
   birthday?: string
   adherence?: number
 }
-
-export default User

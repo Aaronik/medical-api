@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import Knex from 'knex'
 import uuid from 'uuid/v4'
-import User from 'types/User'
+import { User } from 'src/types.d'
 import { ApolloServer, AuthenticationError, UserInputError, ForbiddenError, ValidationError } from 'apollo-server'
 
 // For now, we're going to store authenticate tokens here. This is because authentication
