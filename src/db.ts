@@ -14,32 +14,50 @@ const hashPassword = (email: string, password: string) => {
   return bcrypt.hashSync(password, salt)
 }
 
+// For CCPA/GDPR/HIPPA reasons, we break our users up into multiple tables.
+// This helper helps us put them back together again.
+const userTables = (knex: Knex) => {
+  return knex<User, User>('User')
+    .join('UserHealth', 'User.id', 'UserHealth.userId')
+    .join('UserLogin', 'User.id', 'UserLogin.userId')
+}
+
 function Db(knex: Knex) {
 
   const db = {
 
-    _util: {
-      resetDB: async () => {
-        await knex.migrate.rollback(undefined, true)
-        await knex.migrate.latest()
-        tokenMap = {}
-      }
+    Auth: {
+
+      authenticate: async (email: string, password: string): Promise<string> => {
+        const user = await db.User.findByEmail(email)
+        if (!user) throw new AuthenticationError('Cannot find user with that email address!')
+
+        const hasCorrectPassword = bcrypt.compareSync(password, user.passwordHash)
+        if (!hasCorrectPassword) throw new AuthenticationError('Incorrect email/password combination.')
+
+        const token = uuid()
+        tokenMap[token] = user.id
+
+        return token
+      },
+
+      deauthenticate: async (token: string): Promise<true> => {
+        const userId = tokenMap[token]
+        if (!userId) throw new AuthenticationError('Invalid token.')
+        delete tokenMap[token]
+        return true
+      },
+
     },
 
     User: {
 
-      _userTables: () => {
-        return knex<User>('User')
-          .join('UserHealth', 'User.id', 'UserHealth.userId')
-          .join('UserLogin', 'User.id', 'UserLogin.userId')
-      },
-
       findById: async (id: number) => {
-        return await db.User._userTables().first().where({ id })
+        return await userTables(knex).first().where({ id })
       },
 
       findByEmail: async (email: string) => {
-        return await db.User._userTables().first().where({ email })
+        return await userTables(knex).first().where({ email })
       },
 
       findByAuthToken: async (token: string): Promise<User | false> => {
@@ -49,7 +67,7 @@ function Db(knex: Knex) {
       },
 
       findAll: async () => {
-        return db.User._userTables().select()
+        return userTables(knex).select()
       },
 
       create: async (email: string, password: string) => {
@@ -63,29 +81,14 @@ function Db(knex: Knex) {
 
     },
 
-    Auth: {
-
-      authenticate: async (email: string, password: string) => {
-        const user = await db.User.findByEmail(email)
-        if (!user) throw new AuthenticationError('Cannot find user with that email address!')
-
-        const hasCorrectPassword = bcrypt.compareSync(password, user.passwordHash)
-        if (!hasCorrectPassword) throw new AuthenticationError('Incorrect email/password combination.')
-
-        const token = uuid()
-        tokenMap[token] = user.id
-
-        return token
-      },
-
-      deauthenticate: async (token: string) => {
-        const userId = tokenMap[token]
-        if (!userId) throw new AuthenticationError('Invalid token.')
-        delete tokenMap[token]
-        return true
-      },
-
+    _util: {
+      resetDB: async () => {
+        await knex.migrate.rollback(undefined, true)
+        await knex.migrate.latest()
+        tokenMap = {}
+      }
     },
+
   }
 
   return db
