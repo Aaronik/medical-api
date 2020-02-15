@@ -11,7 +11,7 @@ export default gql`
   }
 
   type Mutation {
-    createUser(email:String, password:String): User
+    createUser(email:String, password:String, role:Role): User
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
     submitQuestionResponse: Boolean

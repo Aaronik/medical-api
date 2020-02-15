@@ -11,11 +11,7 @@ export type User = {
   adherence?: number
 }
 
-export enum Role {
-  ADMIN = 'ADMIN',
-  DOCTOR = 'DOCTOR',
-  PATIENT = 'PATIENT'
-}
+type Role = 'ADMIN' |'DOCTOR' |'PATIENT'
 
 
 // TODO Limitations of current system

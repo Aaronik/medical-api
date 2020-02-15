@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import Knex from 'knex'
 import uuid from 'uuid/v4'
-import { User } from 'src/types.d'
+import { User, Role } from 'src/types.d'
 import { ApolloServer, AuthenticationError, UserInputError, ForbiddenError, ValidationError } from 'apollo-server'
 
 // For now, we're going to store authenticate tokens here. This is because authentication
@@ -70,9 +70,8 @@ function Db(knex: Knex) {
         return userTables(knex).select()
       },
 
-      create: async (email: string, password: string) => {
+      create: async (email: string, password: string, role: Role) => {
         const passwordHash = hashPassword(email, password)
-        const role = 'DOCTOR' // TODO
         const [userId] = await knex('User').insert({ role, email })
         await knex('UserLogin').insert({ userId, passwordHash })
         await knex('UserHealth').insert({ userId })

@@ -75,10 +75,10 @@ export default function Server(knex: Knex) {
       Mutation: {
 
         createUser: async (parent, args, context, info) => {
-          const { email, password } = enforceArgs(args, 'email', 'password')
+          const { email, password, role } = enforceArgs(args, 'email', 'password', 'role')
           const existingUser = await db.User.findByEmail(email)
           if (existingUser) throw new ValidationError(`A user with the email ${email} already exists!`)
-          return db.User.create(email, password)
+          return db.User.create(email, password, role)
         },
 
         authenticate: async (parent, args, context, info) => {

@@ -6,6 +6,7 @@ import { createTestClient } from 'apollo-server-testing'
 import knex from 'test/db-connection'
 import fs from 'fs'
 import test from 'tape'
+import { query, mutate } from 'test/query-mutate'
 
 // This is our test runner -- it allows all the tests to be run asynchronously
 // and great. Watch out for this guy, he'll rock your socks off.
@@ -19,13 +20,21 @@ const db = Db(knex)
 const server = Server(knex)
 const files = fs.readdirSync(__dirname + '/spec')
 
-export type TModuleExport = (testx: typeof test, knexx: typeof knex, dbx: typeof db, serverx: typeof server) => void
+// x's are to prevent typescript's brain from imploding
+export type TestModuleExport = (
+  testx: typeof test,
+  queryx: typeof query,
+  mutatex: typeof mutate,
+  knexx: typeof knex,
+  dbx: typeof db,
+  serverx: typeof server
+) => void
 
 const executions = files.map((file, idx) => {
   return new Promise((resolve, reject) => {
     import('./spec/' + file).then(resp => {
       const moduleTestFn = resp.test
-      moduleTestFn(test, knex, db, server)
+      moduleTestFn(test, query, mutate, knex, db, server)
     })
 
     test.onFinish(resolve)
