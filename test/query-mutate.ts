@@ -3,7 +3,6 @@ import createTestClient from 'test/create-test-client'
 import { Role } from 'src/types.d'
 import uuid from 'uuid/v4'
 
-// const { createUser } = await mutate(server).asAdmin({ mutation: CREATE_USER, variables: { email, password }})
 /*
  * These help making privileged operations much, much easier. They handle creating a user with appropriate privs,
  * authenticating, and storing and using that token.
@@ -14,16 +13,18 @@ import uuid from 'uuid/v4'
  *
 */
 export const mutate = (server: ApolloServer) => ({
-  asUnprived: async (queryOptions: Mutation | Query) => runGqlAs(queryOptions, server),
-  asPatient: async (queryOptions: Mutation | Query) => runGqlAs(queryOptions, server, 'PATIENT'),
-  asDoctor: async (queryOptions: Mutation | Query) => runGqlAs(queryOptions, server, 'DOCTOR'),
-  asAdmin: async (queryOptions: Mutation | Query) => runGqlAs(queryOptions, server, 'ADMIN'),
+  asUnprived: async (queryOptions: Mutation) => runGqlAs(queryOptions, server),
+  asPatient: async (queryOptions: Mutation) => runGqlAs(queryOptions, server, 'PATIENT'),
+  asDoctor: async (queryOptions: Mutation) => runGqlAs(queryOptions, server, 'DOCTOR'),
+  asAdmin: async (queryOptions: Mutation) => runGqlAs(queryOptions, server, 'ADMIN'),
 })
 
-// Actually sticking with separation of query/mutate, even though they're the same here. I think
-// it's best practice to use the two, and it'll keep this implementation flexible and as close
-// to the original thing as possible.
-export const query = mutate
+export const query = (server: ApolloServer) => ({
+  asUnprived: async (queryOptions: Query) => runGqlAs(queryOptions, server),
+  asPatient: async (queryOptions: Query) => runGqlAs(queryOptions, server, 'PATIENT'),
+  asDoctor: async (queryOptions: Query) => runGqlAs(queryOptions, server, 'DOCTOR'),
+  asAdmin: async (queryOptions: Query) => runGqlAs(queryOptions, server, 'ADMIN'),
+})
 
 const runGqlAs = async (queryOptions: Mutation | Query, server: ApolloServer, role?: Role) => {
   const { mutate, query } = createTestClient(server)

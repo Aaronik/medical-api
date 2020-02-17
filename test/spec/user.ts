@@ -40,7 +40,7 @@ query {
 }
 `
 
-export const test: TestModuleExport = (test, mutate, query, knex, db, server) => {
+export const test: TestModuleExport = (test, query, mutate, knex, db, server) => {
 
   test('GQL Create User -> Auth -> Me -> Deauth', async t => {
     await db._util.resetDB()
@@ -86,7 +86,7 @@ export const test: TestModuleExport = (test, mutate, query, knex, db, server) =>
     t.equal(resp1.data?.createUser?.email, email1)
     t.equal(resp2.data?.createUser?.email, email2)
 
-    const { data } = await mutate(server).asUnprived({ mutation: GET_USERS })
+    const { data } = await query(server).asUnprived({ query: GET_USERS })
 
     t.deepEqual(data?.users, [{ email: email1 }, { email: email2 }])
 

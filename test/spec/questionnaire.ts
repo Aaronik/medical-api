@@ -35,18 +35,21 @@ const CREATE_QUESTIONNAIRE = gql`
 `
 
 export const test: TestModuleExport = (test, query, mutate, knex, db, server) => {
-  test.only('GQL Add Questionnaire -> Get Questionnaire', async t => {
+  test('GQL Add Questionnaire -> Get Questionnaire', async t => {
     await db._util.resetDB()
 
     const title = 'Questionnaire Test Title'
 
     // TODO not specifying options does not yield type error, but server expects them
-    // so it should be a type error here.
+    // so it should be a type error here. I'm telling TS it's a choice question, but
+    // TS is just not seeing that options are required.
     const questions: Omit<Omit<Question, 'id'>, 'questionnaireId'>[] = [
       { type: 'BOOLEAN', text: 'Sample Boolean Question' },
       { type: 'TEXT', text: 'Sample Text Question' },
       { type: 'SINGLE_CHOICE', text: 'Sample Single Choice Question', options: [] },
-      { type: 'MULTIPLE_CHOICE', text: 'Sample Multiple Choice Question', options: [{ value: 'val', text: 'text' } as QuestionOption ] },
+      { type: 'MULTIPLE_CHOICE', text: 'Sample Multiple Choice Question', options: [
+        { value: 'val', text: 'text' } as QuestionOption
+      ]},
     ]
 
     const { data, errors } = await mutate(server).asUnprived({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
