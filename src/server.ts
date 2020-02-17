@@ -93,6 +93,17 @@ export default function Server(knex: Knex) {
 
         createQuestionnaire: async (parent, args, context, info) => {
           const { title, questions } = enforceArgs(args, 'title', 'questions')
+
+          // Make sure questions are shaped correctly too.
+          // TODO Make a type enforcement func? Really the GQL type
+          // system should be able to handle it.
+          questions.forEach(q => {
+            enforceArgs(q, 'type')
+
+            if (q.type === 'SINGLE_CHOICE' || q.type === 'MULTIPLE_CHOICE')
+              enforceArgs(q, 'options')
+          })
+
           return db.Questionnaire.create({ title, questions })
         },
 

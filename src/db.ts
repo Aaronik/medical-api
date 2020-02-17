@@ -22,6 +22,11 @@ const userTables = (knex: Knex) => {
     .join('UserLogin', 'User.id', 'UserLogin.userId')
 }
 
+// Helper to know if a question is of the type that has options on it
+const canHaveOptions = (question: T.Question) => {
+  return ['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(question.type)
+}
+
 function Db(knex: Knex) {
 
   const db = {
@@ -87,41 +92,37 @@ function Db(knex: Knex) {
         const questions = await knex<T.Question, T.Question[]>('Question').select('*').where({ questionnaireId: id })
 
         const ps = questions.map(q => knex<T.QuestionOption[], T.QuestionOption[]>('QuestionOption').select().where({ questionId: q.id }))
-        const [questionOptions] = await Promise.all(ps)
+        const questionOptions = (await Promise.all(ps)).flat()
 
+        // initialize question options
+        questions.forEach(q => {
+          if (!canHaveOptions(q)) return
+          if (!q.options) q.options = []
+        })
+
+        // Attach question options to question object
         questionOptions.forEach(o => {
           const question = questions.find((q) => q.id === o.questionId)
-          if (!question.options) question.options = []
           question.options.push(o)
         })
 
         questionnaire.questions = questions
 
         return questionnaire
-
-        // return knex<T.Questionnaire, T.Questionnaire>('Questionnaire')
-        //   .leftJoin('Question', 'Questionnaire.id', 'Question.questionnaireId')
-        //   .leftJoin('QuestionOption', 'Question.id', 'QuestionOption.questionId')
-        //   .select('*')
-        //   .first()
       },
 
       create: async (questionnaire: Omit<T.Questionnaire, 'id'>) => {
         const [questionnaireId] = await knex('Questionnaire').insert({ title: questionnaire.title })
 
-        const ps = questionnaire.questions.map(async q => {
+        await Promise.all(questionnaire.questions.map(async q => {
           const [questionId] = await knex('Question').insert({ type: q.type, text: q.text, questionnaireId })
 
-          if (q.type !== 'SINGLE_CHOICE' && q.type !== 'MULTIPLE_CHOICE') return
+          if (!canHaveOptions(q)) return
 
-          const ps = q.options.map(async o => {
+          await Promise.all(q.options.map(async o => {
             await knex('QuestionOption').insert({ questionId, value: o.value, text: o.text })
-          })
-
-          await Promise.all(ps)
-        })
-
-        await Promise.all(ps)
+          }))
+        }))
 
         return db.Questionnaire.findById(questionnaireId)
       }

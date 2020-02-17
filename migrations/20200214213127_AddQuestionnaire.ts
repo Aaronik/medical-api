@@ -25,7 +25,7 @@ export async function up(knex: Knex): Promise<any> {
 
   await knex.raw(`
     CREATE TABLE QuestionOption (
-      id int(11) NOT NULL,
+      id int(11) NOT NULL AUTO_INCREMENT,
       questionId int(11) NOT NULL,
       value varchar(255),
       text text,

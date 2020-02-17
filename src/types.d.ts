@@ -43,14 +43,14 @@ export interface TextQuestion extends QuestionMeta {
 
 export interface SingleChoiceQuestion extends QuestionMeta {
   type: 'SINGLE_CHOICE'
-  options: [QuestionOption]
+  options: QuestionOption[]
   response?: string
 }
 
 export interface MultipleChoiceQuestion extends QuestionMeta {
   type: 'MULTIPLE_CHOICE'
-  options: [QuestionOption]
-  response?: [string]
+  options: QuestionOption[]
+  response?: string[]
 }
 
 export interface QuestionMeta {
@@ -70,11 +70,4 @@ export type QuestionOption = {
 }
 
 export type QuestionType = 'TEXT' | 'MULTIPLE_CHOICE' | 'SINGLE_CHOICE' | 'BOOLEAN'
-
-// export enum QuestionType {
-//   TEXT = 'TEXT',
-//   MULTIPLE_CHOICE = 'MULTIPLE_CHOICE',
-//   SINGLE_CHOICE = 'SINGLE_CHOICE',
-//   BOOLEAN = 'BOOLEAN'
-// }
 
