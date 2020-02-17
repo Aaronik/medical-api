@@ -3,6 +3,7 @@ import Knex from 'knex'
 import uuid from 'uuid/v4'
 import * as T from 'src/types.d'
 import { ApolloServer, AuthenticationError, UserInputError, ForbiddenError, ValidationError } from 'apollo-server'
+import * as _ from 'lodash'
 
 // For now, we're going to store authenticate tokens here. This is because authentication
 // will happen on every request, so we're going to use this as an in-memory data store rather
@@ -81,6 +82,11 @@ function Db(knex: Knex) {
         await knex('UserLogin').insert({ userId, passwordHash })
         await knex('UserHealth').insert({ userId })
         return db.User.findById(userId)
+      },
+
+      update: async (update: Pick<T.User, 'id' | 'role' | 'email' | 'name' | 'imageUrl' | 'birthday'>) => {
+        await knex('User').update(update)
+        return db.User.findById(update.id)
       },
 
     },

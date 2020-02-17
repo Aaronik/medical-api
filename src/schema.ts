@@ -12,6 +12,7 @@ export default gql`
 
   type Mutation {
     createUser(email:String, password:String, role:Role): User
+    updateMe(user:MeInput): User
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
     submitQuestionResponse: Boolean
@@ -131,6 +132,14 @@ export default gql`
   input QuestionOptionInput {
     value: String
     text: String
+  }
+
+  input MeInput {
+    name: String
+    email: String
+    role: Role
+    imageUrl: String
+    birthday: Int
   }
 
 `

@@ -11,6 +11,14 @@ const CREATE_USER = gql`
   }
 `
 
+const UPDATE_ME = gql`
+  mutation ($user: MeInput) {
+    updateMe(user:$user) {
+      role
+    }
+  }
+`
+
 const AUTHENTICATE = gql`
   mutation ($email: String, $password: String) {
     authenticate(email: $email, password: $password)
@@ -111,6 +119,21 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.end()
   })
 
+  test('GQL Create User -> Update User', async t => {
+    await db._util.resetDB()
+
+    // The trick here is I'm doing as an admin a change to doctor, so we should see the role be doc, which
+    // means the update went through.
+    const { data, errors } = await mutate(server).asAdmin({ mutation: UPDATE_ME, variables: { user: {
+      role: 'DOCTOR'
+    }}})
+
+    t.deepEqual(errors, undefined)
+
+    t.equal(data?.updateMe?.role, 'DOCTOR')
+
+    t.end()
+  })
 
 }
 

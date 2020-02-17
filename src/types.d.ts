@@ -7,12 +7,20 @@ export type User = {
   passwordHash: string
   role: Role
   imageUrl?: string
-  birthday?: string
+  birthday?: number
   adherence?: number
 }
 
 type Role = 'ADMIN' |'DOCTOR' |'PATIENT'
 
+// When a user updates themselves
+export type MeUserInput = {
+  name: string
+  email: string
+  role: Role
+  imageUrl: string
+  birthday: number
+}
 
 // TODO Limitations of current system
 // * Questions are only linear. In fact, there's no way to tell what's the
@@ -70,4 +78,3 @@ export type QuestionOption = {
 }
 
 export type QuestionType = 'TEXT' | 'MULTIPLE_CHOICE' | 'SINGLE_CHOICE' | 'BOOLEAN'
-

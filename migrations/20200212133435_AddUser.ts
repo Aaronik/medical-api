@@ -8,7 +8,7 @@ export async function up(knex: Knex): Promise<any> {
       email varchar(330) NOT NULL,
       name varchar(255),
       imageUrl varchar(255),
-      birthday varchar(255),
+      birthday datetime,
       joinDate datetime DEFAULT NOW()
     ) ENGINE=InnoDB
   `)

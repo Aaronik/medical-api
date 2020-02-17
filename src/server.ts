@@ -4,7 +4,7 @@ import typeDefs from 'src/schema'
 import { Request } from 'express'
 import Db from 'src/db'
 import Knex from 'knex'
-import { User, Role, QuestionMeta, Question } from 'src/types.d'
+import * as T from 'src/types.d'
 
 // Sigh, this is just how Apollo structures it. It'd be great if they'd export this type
 // but they inline it.
@@ -28,7 +28,7 @@ const enforceArgs = <_, T>(args: any, ...fields: string[]) => {
 // Helper to ensure user has sufficient permissions. Pass in however many roles,
 // and the helper will throw if the user doesn't satisfy any of those roles. Will
 // always fail if no user was passed in.
-const enforceRoles = (user?: User, ...roles: Role[]) => {
+const enforceRoles = (user?: T.User, ...roles: T.Role[]) => {
   if (!user || !roles.includes(user.role)) throw new ForbiddenError('Insufficient permissions.')
 }
 
@@ -82,6 +82,22 @@ export default function Server(knex: Knex) {
           return db.User.create(email, password, role)
         },
 
+        updateMe: async (parent, args, context, info) => {
+          const { user }: { user: Partial<T.MeUserInput> } = enforceArgs(args, 'user')
+          if (!context.user) throw new ForbiddenError('Must be authenticated to update user.')
+
+          const update = {
+            id: context.user.id,
+            role: user.role || context.user.role || null,
+            email: user.email || context.user.email || null,
+            name: user.name || context.user.name || null,
+            imageUrl: user.imageUrl || context.user.imageUrl || null,
+            birthday: user.birthday || context.user.birthday || null
+          }
+
+          return db.User.update(update)
+        },
+
         authenticate: async (parent, args, context, info) => {
           const { email, password } = enforceArgs(args, 'email', 'password')
           return db.Auth.authenticate(email, password)
@@ -110,13 +126,13 @@ export default function Server(knex: Knex) {
       },
 
       QuestionMeta: {
-        __resolveType: (meta: QuestionMeta) => {
+        __resolveType: (meta: T.QuestionMeta) => {
           return meta.type
         }
       },
 
       Question: {
-        __resolveType: (obj: Question) => {
+        __resolveType: (obj: T.Question) => {
           switch (obj.type) {
             case 'BOOLEAN': return 'BooleanQuestion'
             case 'TEXT': return 'TextQuestion'
