@@ -139,6 +139,8 @@ function Db(knex: Knex) {
     },
 
     _util: {
+      // It doesn't need to be said that this is a test only function. Calling this against
+      // a live DB will result in epic disaster.
       resetDB: async () => {
         // The below works and is relatively foolproof, plus it validates migrations
         // in both directions. However, it slows down the test suite a tonnnnn.
