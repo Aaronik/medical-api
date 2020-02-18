@@ -4,7 +4,7 @@ A GQL server that bridges external APIs and maybe more... 🔥🔥🔥
 ## Development
 
 We use docker for development, so you'll need to have `docker` and `docker-compose` installed.
-You'll also need `npm` so you can install dependencies.
+You'll also need `npm` (v6.13.2 via node 12.13.1 ATTOW) so you can install dependencies.
 
 The first time you start developing on this app, run:
 
