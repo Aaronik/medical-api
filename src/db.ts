@@ -93,8 +93,11 @@ function Db(knex: Knex) {
 
     Questionnaire: {
 
-      findById: async (id: number) => {
+      findById: async (id: number): Promise<T.Questionnaire | null> => {
         const questionnaire = await knex<T.Questionnaire, T.Questionnaire>('Questionnaire').select('*').where({ id }).first()
+
+        if (!questionnaire) return null
+
         const questions = await knex<T.Question, T.Question[]>('Question').select('*').where({ questionnaireId: id })
 
         const ps = questions.map(q => knex<T.QuestionOption[], T.QuestionOption[]>('QuestionOption').select().where({ questionId: q.id }))
@@ -137,8 +140,22 @@ function Db(knex: Knex) {
 
     _util: {
       resetDB: async () => {
-        await knex.migrate.rollback(undefined, true)
-        await knex.migrate.latest()
+        // The below works and is relatively foolproof, plus it validates migrations
+        // in both directions. However, it slows down the test suite a tonnnnn.
+        // ATTOW, there were Questionnaire and User related tables, and it took 500-800
+        // ms to run a single test. After switching to DELETE FROM syntax, it takes less
+        // than 100 ms per test.
+        // await knex.migrate.rollback(undefined, true)
+        // await knex.migrate.latest()
+
+        for (let table of [
+          'QuestionResponseBoolean', 'QuestionResponseText', 'QuestionResponseMultiple',
+          'QuestionOption', 'Question', 'Questionnaire', 'UserHealth', 'UserLogin',
+          'User',
+        ]) {
+          await knex.raw(`DELETE FROM ${table}`)
+        }
+
         tokenMap = {}
       }
     },

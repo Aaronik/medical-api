@@ -3,6 +3,14 @@ import createTestClient from 'test/create-test-client'
 import { TestModuleExport } from 'test/runner'
 import { Question, Questionnaire, QuestionOption } from 'types'
 
+const GET_QUESTIONNAIRE = gql`
+  query Questionnaire($id: Int!) {
+    questionnaire(id: $id) {
+      id
+    }
+  }
+`
+
 const CREATE_QUESTIONNAIRE = gql`
   mutation CreateQuestionnaire($title: String, $questions: [QuestionInput]){
     createQuestionnaire(title: $title, questions: $questions) {
@@ -63,6 +71,18 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     t.deepEqual(questionnaire?.questions?.[2].options, [])
     t.deepEqual(questionnaire?.questions?.[3].options, [{ value: 'val', text: 'text' }])
+
+    t.end()
+  })
+
+  test('GQL Get Questionnaire that doesn\'t exist', async t => {
+    await db._util.resetDB()
+
+    const { data, errors } = await mutate(server).asUnprived({ mutation: GET_QUESTIONNAIRE, variables: { id: 42 } })
+    const questionnaire = data?.createQuestionnaire
+
+    t.deepEqual(errors, undefined, 'Received unexpected GQL error')
+    t.equal(questionnaire, undefined)
 
     t.end()
   })

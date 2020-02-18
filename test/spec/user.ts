@@ -63,7 +63,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     const createResp = await signedOutClient.mutate({ mutation: CREATE_USER, variables: { email, password, role: 'ADMIN' }})
     const user = createResp?.data?.createUser
 
-    t.deepEqual(user, { email, id: 1 })
+    t.equal(user?.email, email)
 
     const authResp = await signedOutClient.mutate({ mutation: AUTHENTICATE, variables: { email, password, role: 'ADMIN' }})
     const token = authResp?.data?.authenticate

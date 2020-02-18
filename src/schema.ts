@@ -19,6 +19,8 @@ export default gql`
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
   }
 
+  ### User
+
   type User {
     id: Int
     name: String
@@ -36,6 +38,16 @@ export default gql`
     DOCTOR,
     PATIENT
   }
+
+  input MeInput {
+    name: String
+    email: String
+    role: Role
+    imageUrl: String
+    birthday: Int
+  }
+
+  ### Questionnaire
 
   type Questionnaire {
     id: Int
@@ -55,13 +67,8 @@ export default gql`
     text: String
 
     "This will always be 'TEXT'"
-    type: QuestionType
+    type: QuestionType!
     response: String
-  }
-
-  type QuestionOption {
-    value: String
-    text: String
   }
 
   type MultipleChoiceQuestion implements QuestionMeta {
@@ -71,7 +78,7 @@ export default gql`
 
     "This will always be 'MULTIPLE_CHOICE'"
     type: QuestionType
-    options: [QuestionOption]
+    options: [QuestionOption]!
 
     "Collection of QuestionOption values"
     response: [String]
@@ -84,7 +91,7 @@ export default gql`
 
     "This will always be 'SINGLE_CHOICE'"
     type: QuestionType
-    options: [QuestionOption]
+    options: [QuestionOption]!
 
     "A single QuestionOption value"
     response: String
@@ -114,6 +121,11 @@ export default gql`
     BOOLEAN
   }
 
+  type QuestionOption {
+    value: String
+    text: String
+  }
+
   interface QuestionMeta {
     id: Int
     questionnaire: Questionnaire
@@ -132,14 +144,6 @@ export default gql`
   input QuestionOptionInput {
     value: String
     text: String
-  }
-
-  input MeInput {
-    name: String
-    email: String
-    role: Role
-    imageUrl: String
-    birthday: Int
   }
 
 `

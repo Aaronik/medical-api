@@ -22,11 +22,6 @@ export type MeUserInput = {
   birthday: number
 }
 
-// TODO Limitations of current system
-// * Questions are only linear. In fact, there's no way to tell what's the
-//   next question save for that it might have the next id.
-//   Need them to be branchable based on response.
-
 export type Questionnaire = {
   id: number
   title: string
