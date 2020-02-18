@@ -51,7 +51,7 @@ query {
 export const test: TestModuleExport = (test, query, mutate, knex, db, server) => {
 
   test('GQL Create User -> Auth -> Me -> Deauth', async t => {
-    await db._util.resetDB()
+    await db._util.clearDb()
 
     // The rest use mutate/query supplied, but this test will go deeper and be able to forwarn of any
     // issues signing in better than mutate/query since they don't do t.asserts or whatevs
@@ -82,7 +82,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Create User -> Create User -> Get Users', async t => {
-    await db._util.resetDB()
+    await db._util.clearDb()
 
     const email1 = 'test@email.com'
     const email2 = 'test2@email.com'
@@ -102,7 +102,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Create User -> Create Duplicate User', async t => {
-    await db._util.resetDB()
+    await db._util.clearDb()
 
     const email = 'test@email.com'
     const password = 'testPass'
@@ -120,7 +120,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Create User -> Update User', async t => {
-    await db._util.resetDB()
+    await db._util.clearDb()
 
     // The trick here is I'm doing as an admin a change to doctor, so we should see the role be doc, which
     // means the update went through.

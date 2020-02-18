@@ -123,6 +123,23 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.create({ title, questions })
         },
 
+
+        submitBooleanQuestionResponse: async (parent, args, context, info) => {
+          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
+          enforceRoles(context.user)
+          return db.Questionnaire.submitBooleanQuestionResponse(context.user.id, questionId, value)
+        },
+        submitTextQuestionResponse: async (parent, args, context, info) => {
+          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
+          enforceRoles(context.user)
+          return db.Questionnaire.submitTextQuestionResponse(context.user.id, questionId, value)
+        },
+        submitChoiceQuestionResponse: async (parent, args, context, info) => {
+          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
+          enforceRoles(context.user)
+          return db.Questionnaire.submitChoiceQuestionResponse(context.user.id, questionId, value)
+        },
+
       },
 
       QuestionMeta: {

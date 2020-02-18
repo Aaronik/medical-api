@@ -39,8 +39,11 @@ export async function up(knex: Knex): Promise<any> {
 
   await knex.raw(`
     CREATE TABLE QuestionResponseBoolean (
-      questionId int(11) PRIMARY KEY NOT NULL,
+      questionId int(11) NOT NULL,
+      userId int(11) NOT NULL,
       value BOOLEAN,
+
+      PRIMARY KEY (questionId, userId),
 
       CONSTRAINT boolean_response_quesetion FOREIGN KEY (questionId)
       REFERENCES Question(id) ON DELETE CASCADE
@@ -49,8 +52,11 @@ export async function up(knex: Knex): Promise<any> {
 
   await knex.raw(`
     CREATE TABLE QuestionResponseText (
-      questionId int(11) PRIMARY KEY NOT NULL,
+      questionId int(11) NOT NULL,
+      userId int(11) NOT NULL,
       value text,
+
+      PRIMARY KEY (questionId, userId),
 
       CONSTRAINT text_response_question FOREIGN KEY (questionId)
       REFERENCES Question(id) ON DELETE CASCADE
@@ -58,11 +64,12 @@ export async function up(knex: Knex): Promise<any> {
   `)
 
   await knex.raw(`
-    CREATE TABLE QuestionResponseMultiple (
+    CREATE TABLE QuestionResponseChoice (
       questionId int(11) NOT NULL,
+      userId int(11) NOT NULL,
       optionId int(11) NOT NULL,
 
-      PRIMARY KEY (questionId, optionId),
+      PRIMARY KEY (questionId, userId),
 
       CONSTRAINT multiple_response_question FOREIGN KEY (questionId)
       REFERENCES Question(id) ON DELETE CASCADE,
@@ -75,6 +82,6 @@ export async function up(knex: Knex): Promise<any> {
 
 
 export async function down(knex: Knex): Promise<any> {
-  await knex.raw(`DROP TABLE QuestionResponseMultiple,QuestionResponseText,QuestionResponseBoolean,QuestionOption,Question,Questionnaire;`)
+  await knex.raw(`DROP TABLE QuestionResponseChoice,QuestionResponseText,QuestionResponseBoolean,QuestionOption,Question,Questionnaire;`)
 }
 

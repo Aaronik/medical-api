@@ -134,24 +134,28 @@ function Db(knex: Knex) {
         }))
 
         return db.Questionnaire.findById(questionnaireId)
-      }
+      },
+
+      submitBooleanQuestionResponse: async (userId: string, questionId: string, value: boolean) => {
+        return knex('QuestionResponseBoolean').insert({ userId, questionId, value })
+      },
+
+      submitTextQuestionResponse: async (userId: string, questionId: string, value: string) => {
+        return knex('QuestionResponseText').insert({ userId, questionId, value })
+      },
+
+      submitChoiceQuestionResponse: async (userId: string, questionId: string, value: string) => {
+        return knex('QuestionResponseMultiple').insert({ userId, questionId, value })
+      },
 
     },
 
     _util: {
       // It doesn't need to be said that this is a test only function. Calling this against
       // a live DB will result in epic disaster.
-      resetDB: async () => {
-        // The below works and is relatively foolproof, plus it validates migrations
-        // in both directions. However, it slows down the test suite a tonnnnn.
-        // ATTOW, there were Questionnaire and User related tables, and it took 500-800
-        // ms to run a single test. After switching to DELETE FROM syntax, it takes less
-        // than 100 ms per test.
-        // await knex.migrate.rollback(undefined, true)
-        // await knex.migrate.latest()
-
+      clearDb: async () => {
         for (let table of [
-          'QuestionResponseBoolean', 'QuestionResponseText', 'QuestionResponseMultiple',
+          'QuestionResponseBoolean', 'QuestionResponseText', 'QuestionResponseChoice',
           'QuestionOption', 'Question', 'Questionnaire', 'UserHealth', 'UserLogin',
           'User',
         ]) {
@@ -159,6 +163,14 @@ function Db(knex: Knex) {
         }
 
         tokenMap = {}
+      },
+
+      // It doesn't need to be said here as well. (see above)
+      migrateDownAndUp: async () => {
+        // This will reset the DB, but it's slow as the dickens. Great to do once before
+        // tests are run, but too slothful to do for each individual test.
+        await knex.migrate.rollback(undefined, true)
+        await knex.migrate.latest()
       }
     },
 

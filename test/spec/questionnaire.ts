@@ -44,7 +44,7 @@ const CREATE_QUESTIONNAIRE = gql`
 
 export const test: TestModuleExport = (test, query, mutate, knex, db, server) => {
   test('GQL Add Questionnaire -> Get Questionnaire', async t => {
-    await db._util.resetDB()
+    await db._util.clearDb()
 
     const title = 'Questionnaire Test Title'
 
@@ -76,7 +76,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Get Questionnaire that doesn\'t exist', async t => {
-    await db._util.resetDB()
+    await db._util.clearDb()
 
     const { data, errors } = await mutate(server).asUnprived({ mutation: GET_QUESTIONNAIRE, variables: { id: 42 } })
     const questionnaire = data?.createQuestionnaire

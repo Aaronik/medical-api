@@ -15,8 +15,10 @@ export default gql`
     updateMe(user:MeInput): User
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
-    submitQuestionResponse: Boolean
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
+    submitBooleanQuestionResponse(questionId: Int!, value: Boolean!): Boolean
+    submitTextQuestionResponse(questionId: Int!, value: String!): Boolean
+    submitChoiceQuestionResponse(questionId: Int!, value: String!): Boolean
   }
 
   ### User

@@ -30,15 +30,25 @@ export type TestModuleExport = (
   serverx: typeof server
 ) => void
 
-const executions = files.map((file, idx) => {
-  return new Promise((resolve, reject) => {
-    import('./spec/' + file).then(resp => {
-      const moduleTestFn = resp.test as TestModuleExport
-      moduleTestFn(test, query, mutate, knex, db, server)
-    })
+// Run all the tests.
+// 1) Rollback all migrations,
+// 2) Migrate to latest.
+// This helps us ensure that firstly, the DB is clean and up
+// to date. It also enforces good migration up/down coding.
+// 3) Bring in the specs,
+// 4) Run them.
+db._util.migrateDownAndUp().then(() => {
+  const executions = files.map((file, idx) => {
+    return new Promise((resolve, reject) => {
+      import('./spec/' + file).then(resp => {
+        const moduleTestFn = resp.test as TestModuleExport
+        moduleTestFn(test, query, mutate, knex, db, server)
+      })
 
-    test.onFinish(resolve)
+      test.onFinish(resolve)
+    })
   })
+
+  Promise.all(executions).finally(() => knex.destroy())
 })
 
-Promise.all(executions).then(() => knex.destroy())
