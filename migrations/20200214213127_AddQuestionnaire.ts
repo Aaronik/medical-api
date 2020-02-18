@@ -3,14 +3,14 @@ import * as Knex from "knex";
 
 export async function up(knex: Knex): Promise<any> {
   await knex.raw(`
-    CREATE TABLE Questionnaire (
+    CREATE TABLE IF NOT EXISTS Questionnaire (
       id int(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,
       title varchar(255)
     ) ENGINE=InnoDB
   `)
 
   await knex.raw(`
-    CREATE TABLE Question (
+    CREATE TABLE IF NOT EXISTS Question (
       id int(11) NOT NULL AUTO_INCREMENT,
       questionnaireId int(11) NOT NULL,
       text text,
@@ -24,7 +24,7 @@ export async function up(knex: Knex): Promise<any> {
   `)
 
   await knex.raw(`
-    CREATE TABLE QuestionOption (
+    CREATE TABLE IF NOT EXISTS QuestionOption (
       id int(11) NOT NULL AUTO_INCREMENT,
       questionId int(11) NOT NULL,
       value varchar(255),
@@ -38,7 +38,7 @@ export async function up(knex: Knex): Promise<any> {
   `)
 
   await knex.raw(`
-    CREATE TABLE QuestionResponseBoolean (
+    CREATE TABLE IF NOT EXISTS QuestionResponseBoolean (
       questionId int(11) NOT NULL,
       userId int(11) NOT NULL,
       value BOOLEAN,
@@ -51,7 +51,7 @@ export async function up(knex: Knex): Promise<any> {
   `)
 
   await knex.raw(`
-    CREATE TABLE QuestionResponseText (
+    CREATE TABLE IF NOT EXISTS QuestionResponseText (
       questionId int(11) NOT NULL,
       userId int(11) NOT NULL,
       value text,
@@ -64,7 +64,7 @@ export async function up(knex: Knex): Promise<any> {
   `)
 
   await knex.raw(`
-    CREATE TABLE QuestionResponseChoice (
+    CREATE TABLE IF NOT EXISTS QuestionResponseChoice (
       questionId int(11) NOT NULL,
       userId int(11) NOT NULL,
       optionId int(11) NOT NULL,
@@ -82,6 +82,6 @@ export async function up(knex: Knex): Promise<any> {
 
 
 export async function down(knex: Knex): Promise<any> {
-  await knex.raw(`DROP TABLE QuestionResponseChoice,QuestionResponseText,QuestionResponseBoolean,QuestionOption,Question,Questionnaire;`)
+  await knex.raw(`DROP TABLE IF EXISTS QuestionResponseChoice,QuestionResponseText,QuestionResponseBoolean,QuestionOption,Question,Questionnaire`)
 }
 

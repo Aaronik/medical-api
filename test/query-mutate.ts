@@ -7,10 +7,8 @@ import uuid from 'uuid/v4'
  * These help making privileged operations much, much easier. They handle creating a user with appropriate privs,
  * authenticating, and storing and using that token.
  *
- * Each invocation of any function other than asUnprived with result in the creation of a new
- * user in the test database. I don't foresee that being an issue though. TODO there may actually
- * be a nice way around that.
- *
+ * Each invocation will attempt to reuse that user's creds. So say if you create a <thing> with the Patient user,
+ * then try to retrieve all of the patient user's <thing>s, you should get them.
 */
 export const mutate = (server: ApolloServer) => ({
   asUnprived: async (queryOptions: Mutation) => runGqlAs(queryOptions, server),
@@ -31,17 +29,28 @@ const runGqlAs = async (queryOptions: Mutation | Query, server: ApolloServer, ro
 
   if (!role) {
     // We're running as an unprivileged user. Can skip all the user creation stuff.
-
     if (queryOptions.mutation) return mutate(queryOptions as Mutation)
     else                       return query(queryOptions as Query)
   }
 
-  const [ email, password ] = [ `${role || 'unprivileged'}-${uuid()}@millihealthtestusers.com`, 'password' ]
+  const [ email, password ] = [ `${role || 'UNPRIVILEGED'}@millitestuser.com`, 'password' ]
 
-  await mutate({ mutation: CREATE_USER, variables: { email, password, role }})
+  // 1) Try to sign in w/ email/pass
+  // If good: create prived client, run query
+  // If error: create user, etc
 
-  const token = (await mutate({ mutation: AUTHENTICATE, variables: { email, password }})).data?.authenticate
+  // First we'll try to sign in with this user's creds. If the user's been created already, we'll get
+  // a token. Otherwise there'll be some error about that user not existing, which we'll disgard for now.
+  let token = (await mutate({ mutation: AUTHENTICATE, variables: { email, password }})).data?.authenticate
 
+  // So if the login didn't work, we'll assume that user has never been created (in this test at least).
+  // So we create the user, and try to auth again.
+  if (!token) {
+    await mutate({ mutation: CREATE_USER, variables: { email, password, role }})
+    token = (await mutate({ mutation: AUTHENTICATE, variables: { email, password }})).data?.authenticate
+  }
+
+  // If we still don't have a token it's because something is wrong somewhere down the line.
   if (!token) throw new Error(
     `Whoops, Milli custom mutate did not receive a token on sign in. Sorry
     for this being an error, but I don't have access to the test object from in here!`

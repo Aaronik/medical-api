@@ -2,7 +2,7 @@ import * as Knex from "knex";
 
 export async function up(knex: Knex): Promise<any> {
   await knex.raw(`
-    CREATE TABLE User (
+    CREATE TABLE IF NOT EXISTS User (
       id int(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,
       role ENUM('ADMIN', 'DOCTOR', 'PATIENT'),
       email varchar(330) NOT NULL,
@@ -14,7 +14,7 @@ export async function up(knex: Knex): Promise<any> {
   `)
 
   await knex.raw(`
-    CREATE TABLE UserLogin (
+    CREATE TABLE IF NOT EXISTS UserLogin (
       userId int(11) PRIMARY KEY NOT NULL,
       passwordHash char(60) NOT NULL,
       lastVisit datetime DEFAULT NOW(),
@@ -25,7 +25,7 @@ export async function up(knex: Knex): Promise<any> {
   `)
 
   await knex.raw(`
-    CREATE TABLE UserHealth (
+    CREATE TABLE IF NOT EXISTS UserHealth (
       userId int(11) PRIMARY KEY NOT NULL,
       adherence int(11),
 
@@ -37,6 +37,6 @@ export async function up(knex: Knex): Promise<any> {
 
 
 export async function down(knex: Knex): Promise<any> {
-  await knex.raw(`DROP TABLE UserHealth,UserLogin,User;`)
+  await knex.raw(`DROP TABLE IF EXISTS UserHealth,UserLogin,User`)
 }
 

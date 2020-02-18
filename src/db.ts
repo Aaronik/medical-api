@@ -169,6 +169,7 @@ function Db(knex: Knex) {
       migrateDownAndUp: async () => {
         // This will reset the DB, but it's slow as the dickens. Great to do once before
         // tests are run, but too slothful to do for each individual test.
+        await knex.raw(`DELETE FROM knex_migrations_lock`)
         await knex.migrate.rollback(undefined, true)
         await knex.migrate.latest()
       }
