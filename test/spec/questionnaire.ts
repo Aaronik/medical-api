@@ -69,8 +69,11 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.equal(questionnaire?.title, title)
     t.equal(questionnaire?.questions?.length, questions.length)
 
-    t.deepEqual(questionnaire?.questions?.[2].options, [])
-    t.deepEqual(questionnaire?.questions?.[3].options, [{ value: 'val', text: 'text' }])
+    const singleChoiceQuestion = questionnaire?.questions?.find(q => q.type === 'SINGLE_CHOICE')
+    const multipleChoiceQuestion = questionnaire?.questions?.find(q => q.type === 'MULTIPLE_CHOICE')
+
+    t.deepEqual(singleChoiceQuestion?.options, [])
+    t.deepEqual(multipleChoiceQuestion?.options, [{ value: 'val', text: 'text' }])
 
     t.end()
   })
