@@ -61,9 +61,8 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.equal(questionnaire?.title, title)
     t.equal(questionnaire?.questions?.length, questions.length)
 
-    // TODO figure out optional chaining for indexing into arrays that may be null or undefined
-    t.deepEqual(questionnaire?.questions[2].options, [])
-    t.deepEqual(questionnaire?.questions[3].options, [{ value: 'val', text: 'text' }])
+    t.deepEqual(questionnaire?.questions?.[2].options, [])
+    t.deepEqual(questionnaire?.questions?.[3].options, [{ value: 'val', text: 'text' }])
 
     t.end()
   })
