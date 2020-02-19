@@ -69,7 +69,7 @@ export default function Server(knex: Knex) {
 
         questionnaire: async (parent, args, context, info) => {
           const { id } = enforceArgs(args, 'id')
-          return db.Questionnaire.findById(id)
+          return db.Questionnaire.findById(id, context.user?.id)
         },
 
       },

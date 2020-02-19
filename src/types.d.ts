@@ -66,6 +66,7 @@ export interface QuestionMeta {
 }
 
 export type QuestionOption = {
+  id: number
   questionId: number
   question?: Question
   value: string
@@ -73,3 +74,21 @@ export type QuestionOption = {
 }
 
 export type QuestionType = 'TEXT' | 'MULTIPLE_CHOICE' | 'SINGLE_CHOICE' | 'BOOLEAN'
+
+export type DBQuestionResponseBoolean = {
+  questionId: number
+  userId: number
+  value: 0 | 1
+}
+
+export type DBQuestionResponseText = {
+  questionId: number
+  userId: number
+  value: string
+}
+
+export type DBQuestionResponseChoice = {
+  questionId: number
+  userId: number
+  optionId: number
+}

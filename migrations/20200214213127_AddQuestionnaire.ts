@@ -30,7 +30,7 @@ export async function up(knex: Knex): Promise<any> {
       value varchar(255),
       text text,
 
-      PRIMARY KEY (id, questionId),
+      PRIMARY KEY (id, questionId, value),
 
       CONSTRAINT question_option_question FOREIGN KEY (questionId)
       REFERENCES Question(id) ON DELETE CASCADE
@@ -69,7 +69,7 @@ export async function up(knex: Knex): Promise<any> {
       userId int(11) NOT NULL,
       optionId int(11) NOT NULL,
 
-      PRIMARY KEY (questionId, userId),
+      PRIMARY KEY (questionId, userId, optionId),
 
       CONSTRAINT multiple_response_question FOREIGN KEY (questionId)
       REFERENCES Question(id) ON DELETE CASCADE,

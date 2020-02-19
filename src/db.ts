@@ -18,7 +18,7 @@ const hashPassword = (email: string, password: string) => {
 // For CCPA/GDPR/HIPPA reasons, we break our users up into multiple tables.
 // This helper helps us put them back together again.
 const userTables = (knex: Knex) => {
-  return knex<T.User, T.User>('User')
+  return knex<{}, T.User>('User')
     .join('UserHealth', 'User.id', 'UserHealth.userId')
     .join('UserLogin', 'User.id', 'UserLogin.userId')
 }
@@ -93,29 +93,50 @@ function Db(knex: Knex) {
 
     Questionnaire: {
 
-      findById: async (id: number): Promise<T.Questionnaire | null> => {
-        const questionnaire = await knex<T.Questionnaire, T.Questionnaire>('Questionnaire').select('*').where({ id }).first()
+      // If the userId is supplied, we'll try to dig up their responses as well.
+      findById: async (id: number, userId?: number): Promise<T.Questionnaire | null> => {
+        const questionnaire = await knex<{}, T.Questionnaire>('Questionnaire').select('*').where({ id }).first()
 
         if (!questionnaire) return null
 
-        const questions = await knex<T.Question, T.Question[]>('Question').select('*').where({ questionnaireId: id })
+        const questions = await knex<{}, T.Question[]>('Question').select('*').where({ questionnaireId: id })
 
-        const ps = questions.map(q => knex<T.QuestionOption[], T.QuestionOption[]>('QuestionOption').select().where({ questionId: q.id }))
-        const questionOptions = (await Promise.all(ps)).flat()
+        // If questions can have options, grab em and stick em onto the question
+        await Promise.all(questions.map(async q => {
+          if (canHaveOptions(q))
+            q.options = await knex<{}, T.QuestionOption[]>('QuestionOption').select().where({ questionId: q.id })
+        }))
 
-        // initialize question options
-        questions.forEach(q => {
-          if (!canHaveOptions(q)) return
-          if (!q.options) q.options = []
-        })
-
-        // Attach question options to question object
-        questionOptions.forEach(o => {
-          const question = questions.find((q) => q.id === o.questionId)
-          question.options.push(o)
-        })
+        // If there's a user attached, we'll try to dig up their responses as well.
+        if (userId) {
+          await Promise.all(questions.map(async q => {
+            if (q.type === 'BOOLEAN') {
+              const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>('QuestionResponseBoolean').select().where({ questionId: q.id, userId }).first()
+              q.response = !!booleanResponse?.value // MySQL stores bool as binary
+            } else if (q.type === 'TEXT') {
+              const textResponse = await knex<{}, T.DBQuestionResponseText>('QuestionResponseText').select().where({ questionId: q.id, userId }).first()
+              q.response = textResponse?.value
+            } else if (q.type === 'SINGLE_CHOICE') {
+              const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>('QuestionResponseChoice').select().where({ questionId: q.id, userId }).first()
+              const choiceOption = q.options.find(o => o.id === choiceResponse.optionId)
+              q.response = choiceOption?.value
+            } else if (q.type === 'MULTIPLE_CHOICE') {
+              const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>('QuestionResponseChoice').select().where({ questionId: q.id, userId })
+              const choiceOptions = choiceResponses.map(r => q.options.find(o => o.id === r.optionId))
+              // console.log('db, in if(userId) block, multiple choice block, q:', q)
+              // console.log('db, in if(userId) block, multiple choice block, q.options:', q.options)
+              // console.log('db, in if(userId) block, multiple choice block, choiceResponses:', choiceResponses)
+              // console.log('db, in if(userId) block, multiple choice block, choiceOptions:', choiceOptions)
+              q.response = choiceOptions?.map(o => o.value)
+            } else {
+              throw new Error('Tried digging up a question type I did not recognize.')
+            }
+          }))
+        }
 
         questionnaire.questions = questions
+
+        // console.log('db: In Db, questionnaire, userId:', questionnaire, userId)
 
         return questionnaire
       },
@@ -137,15 +158,21 @@ function Db(knex: Knex) {
       },
 
       submitBooleanQuestionResponse: async (userId: string, questionId: string, value: boolean) => {
-        return knex('QuestionResponseBoolean').insert({ userId, questionId, value })
+        await knex('QuestionResponseBoolean').insert({ userId, questionId, value })
+        return true
       },
 
       submitTextQuestionResponse: async (userId: string, questionId: string, value: string) => {
-        return knex('QuestionResponseText').insert({ userId, questionId, value })
+        await knex('QuestionResponseText').insert({ userId, questionId, value })
+        return true
       },
 
       submitChoiceQuestionResponse: async (userId: string, questionId: string, value: string) => {
-        return knex('QuestionResponseMultiple').insert({ userId, questionId, value })
+        const option = await knex<{}, T.QuestionOption>('QuestionOption').select('id').where({ questionId, value }).first()
+        if (!option) throw new Error('Could not find specified option')
+        const optionId = option.id
+        await knex('QuestionResponseChoice').insert({ userId, questionId, optionId })
+        return true
       },
 
     },
@@ -169,7 +196,12 @@ function Db(knex: Knex) {
       migrateDownAndUp: async () => {
         // This will reset the DB, but it's slow as the dickens. Great to do once before
         // tests are run, but too slothful to do for each individual test.
-        await knex.raw(`DELETE FROM knex_migrations_lock`)
+        try {
+          await knex.raw(`DELETE FROM knex_migrations_lock`)
+        } catch (e) {
+          // The issue is that knex_migrations_lock doesn't exist on new installs.
+          // So if this fails we're actually totally fine.
+        }
         await knex.migrate.rollback(undefined, true)
         await knex.migrate.latest()
       }

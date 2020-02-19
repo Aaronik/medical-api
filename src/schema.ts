@@ -63,6 +63,20 @@ export default gql`
     | SingleChoiceQuestion
     | BooleanQuestion
 
+# I just can't get it to work when response can be a number of different scalars.
+# Could take the route of creating an anything type....
+#  type Question {
+#    id: Int
+#    questionnaire: Questionnaire
+#    questionnaireId: Int
+#    text: String
+#    type: QuestionType!
+#    response: String
+#    options: [QuestionOption]
+#  }
+
+#  union QuestionResponse = String | [String] | Boolean
+
   type TextQuestion implements QuestionMeta {
     id: Int
     questionnaire: Questionnaire
@@ -79,7 +93,7 @@ export default gql`
     text: String
 
     "This will always be 'MULTIPLE_CHOICE'"
-    type: QuestionType
+    type: QuestionType!
     options: [QuestionOption]!
 
     "Collection of QuestionOption values"
@@ -92,7 +106,7 @@ export default gql`
     text: String
 
     "This will always be 'SINGLE_CHOICE'"
-    type: QuestionType
+    type: QuestionType!
     options: [QuestionOption]!
 
     "A single QuestionOption value"
@@ -105,7 +119,7 @@ export default gql`
     text: String
 
     "This will always be 'BOOLEAN'"
-    type: QuestionType
+    type: QuestionType!
     response: Boolean
   }
 
