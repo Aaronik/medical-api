@@ -28,7 +28,8 @@ const enforceArgs = <_, T>(args: any, ...fields: string[]) => {
 // Helper to ensure user has sufficient permissions. Pass in however many roles,
 // and the helper will throw if the user doesn't satisfy any of those roles. Will
 // always fail if no user was passed in.
-const enforceRoles = (user?: T.User, ...roles: T.Role[]) => {
+export const enforceRoles = (user?: T.User, ...roles: T.Role[]) => {
+  if (roles.length === 0 && user) return
   if (!user || !roles.includes(user.role)) throw new ForbiddenError('Insufficient permissions.')
 }
 
