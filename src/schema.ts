@@ -10,6 +10,20 @@ export default gql`
     question(id: Int!): Question
   }
 
+  # TODO Let createUser take optional name, make email/pass/role required
+  # TODO Let doctors have patients?
+  # TODO Questions point to each other
+  # * Questions require an id on creation
+  #
+  # question = {
+  #   id: string
+  #   text: string
+  #   next: [{
+  #     includes?: string
+  #     equals?: string
+  #     nextQuestionId: string
+  #   }]
+  # }
   type Mutation {
     createUser(email:String, password:String, role:Role): User
     updateMe(user:MeInput): User
