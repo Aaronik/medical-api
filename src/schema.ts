@@ -10,6 +10,11 @@ export default gql`
     question(id: Int!): Question
   }
 
+  # QuestionManager:
+  # nextQuestionId: [{prevQuestionId, includes?, equals?}, {prevQuestionId, includes?, equals?}]
+  # Once the series of conditions are met in the [], nextQuestionId is "triggered" or "assigned"
+  # to the user or something...
+
   # TODO Let createUser take optional name, make email/pass/role required
   # TODO Let doctors have patients?
   # TODO Questions point to each other
