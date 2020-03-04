@@ -3,61 +3,66 @@ import createTestClient from 'test/create-test-client'
 import { TestModuleExport } from 'test/runner'
 import { Question, Questionnaire, QuestionOption, QuestionType, QuestionRelation } from 'types'
 
+// Questions, since they're unions, require an unwieldy fragment. Here it is for reuse.
+const QUESTIONS_FRAGMENT = gql`
+  {
+    ... on BooleanQuestion {
+      id
+      type
+      boolResp: response
+      next {
+        includes
+        equals
+        nextQuestionId
+      }
+    }
+    ... on TextQuestion {
+      id
+      type
+      textResp: response
+      next {
+        includes
+        equals
+        nextQuestionId
+      }
+    }
+    ... on SingleChoiceQuestion {
+      id
+      type
+      singleChoiceResp: response
+      options {
+        value
+        text
+      }
+      next {
+        includes
+        equals
+        nextQuestionId
+      }
+    }
+    ... on MultipleChoiceQuestion {
+      id
+      type
+      multipleChoiceResp: response
+      options {
+        value
+        text
+      }
+      next {
+        includes
+        equals
+        nextQuestionId
+      }
+    }
+  }
+`
+
 const GET_QUESTIONNAIRE = gql`
   query Questionnaire($id: Int!) {
     questionnaire(id: $id) {
       id
       title
-      questions {
-        ... on BooleanQuestion {
-          id
-          type
-          boolResp: response
-          next {
-            includes
-            equals
-            nextQuestionId
-          }
-        }
-        ... on TextQuestion {
-          id
-          type
-          textResp: response
-          next {
-            includes
-            equals
-            nextQuestionId
-          }
-        }
-        ... on SingleChoiceQuestion {
-          id
-          type
-          singleChoiceResp: response
-          options {
-            value
-            text
-          }
-          next {
-            includes
-            equals
-            nextQuestionId
-          }
-        }
-        ... on MultipleChoiceQuestion {
-          id
-          type
-          multipleChoiceResp: response
-          options {
-            value
-            text
-          }
-          next {
-            includes
-            equals
-            nextQuestionId
-          }
-        }
-      }
+      questions ${QUESTIONS_FRAGMENT}
     }
   }
 `
@@ -67,33 +72,14 @@ const CREATE_QUESTIONNAIRE = gql`
     createQuestionnaire(title: $title, questions: $questions) {
       id
       title
-      questions {
-        ... on BooleanQuestion {
-          id
-          type
-        }
-        ... on TextQuestion {
-          id
-          type
-        }
-        ... on SingleChoiceQuestion {
-          id
-          type
-          options {
-            value
-            text
-          }
-        }
-        ... on MultipleChoiceQuestion {
-          id
-          type
-          options {
-            value
-            text
-          }
-        }
-      }
+      questions ${QUESTIONS_FRAGMENT}
     }
+  }
+`
+
+const ADD_QUESTION = gql`
+  mutation AddQuestions($questions: [QuestionInput]) {
+    addQuestions(questions: $questions) ${QUESTIONS_FRAGMENT}
   }
 `
 
@@ -277,6 +263,33 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.deepEqual(textQuestion.next, [{ includes: 'wow', nextQuestionId: singleChoiceQuestion.id, equals: null }], 'Text question has correct next value')
     t.deepEqual(singleChoiceQuestion.next, [{ equals: 'val', nextQuestionId: multipleChoiceQuestion.id, includes: null }], 'Single Choice question has correct next value')
     t.deepEqual(multipleChoiceQuestion.next, [], 'Multiple Choice question has empty next value')
+
+    t.end()
+  })
+
+  test('GQL Submit questionnaire -> Add another question -> Get questionnaire', async t => {
+    const { data: { createQuestionnaire: createdQuestionnaire }, errors: createQuestionnaireErrors }
+      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+
+    t.deepEqual(createQuestionnaireErrors, undefined)
+
+    const extraQuestions = [{
+      questionnaireId: createdQuestionnaire.id,
+      text: 'Added Question',
+      type: 'SINGLE_CHOICE',
+      options: [{ value: 'option', text: 'option' }]
+    }]
+
+    const { errors: addQuestionErrors } = await mutate(server).asAdmin({ mutation: ADD_QUESTION, variables: { questions: extraQuestions }})
+
+    t.deepEqual(addQuestionErrors, undefined)
+
+    const { data: { questionnaire: gottenQuestionnaire }, errors: gottenQuestionnaireErrors }
+      = await query(server).asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
+
+    t.deepEqual(gottenQuestionnaireErrors, undefined)
+
+    t.equal(gottenQuestionnaire.questions.length, questions.length + extraQuestions.length, 'Questionnaire should have all the extra questions')
 
     t.end()
   })

@@ -16,6 +16,7 @@ export default gql`
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
+    addQuestions(questions: [QuestionInput]): [Question]
     createQuestionRelations(relations: [QuestionRelationInput]): Boolean
     submitBooleanQuestionResponse(questionId: Int!, value: Boolean!): Boolean
     submitTextQuestionResponse(questionId: Int!, value: String!): Boolean
@@ -129,9 +130,12 @@ export default gql`
   }
 
   input QuestionInput {
-    text: String
-    type: QuestionType
+    text: String!
+    type: QuestionType!
     options: [QuestionOptionInput]
+
+    "Only required when creating a question for an already existing questionnaire"
+    questionnaireId: Int
   }
 
   type QuestionOption {

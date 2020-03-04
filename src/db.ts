@@ -155,6 +155,18 @@ function Db(knex: Knex) {
         return db.Questionnaire.findById(questionnaireId)
       },
 
+      addQuestions: async (questions: T.Question[]) => {
+        return await Promise.all(questions.map(async q => {
+          const [questionId] = await knex('Question').insert({ questionnaireId: q.questionnaireId, text: q.text, type: q.type })
+
+          q.options?.forEach(async o => {
+            await knex('QuestionOption').insert({ questionId, value: o.value, text: o.text })
+          })
+
+          return Object.assign({ id: questionId }, q)
+        }))
+      },
+
       createQuestionRelations: async (relations: T.QuestionRelation[]) => {
         await Promise.all(relations.map(async relation => {
           await knex('QuestionRelation').insert(relation)
