@@ -140,10 +140,6 @@ const questions: Omit<Omit<Question, 'id'>, 'questionnaireId'>[] = [
   },
 ]
 
-const questionRelations = [
-
-]
-
 export const test: TestModuleExport = (test, query, mutate, knex, db, server) => {
   test('GQL Add Questionnaire -> Get Questionnaire', async t => {
     await db._util.clearDb()
