@@ -63,6 +63,7 @@ export interface QuestionMeta {
   text: string
   type: QuestionType
   options?: QuestionOption[]
+  next?: QuestionRelation[]
 }
 
 export type QuestionOption = {
@@ -71,6 +72,15 @@ export type QuestionOption = {
   question?: Question
   value: string
   text: string
+}
+
+export type QuestionRelation = {
+  questionId?: number
+  question?: Question
+  nextQuestionId: number
+  nextQuestion?: Question
+  includes?: string
+  equals?: string
 }
 
 export type QuestionType = 'TEXT' | 'MULTIPLE_CHOICE' | 'SINGLE_CHOICE' | 'BOOLEAN'

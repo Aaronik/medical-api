@@ -101,10 +101,14 @@ function Db(knex: Knex) {
 
         const questions = await knex<{}, T.Question[]>('Question').select('*').where({ questionnaireId: id })
 
-        // If questions can have options, grab em and stick em onto the question
         await Promise.all(questions.map(async q => {
-          if (canHaveOptions(q))
+          // Grab each question relation and assign to question
+          q.next = await knex<{}, T.QuestionRelation>('QuestionRelation').select().where({ questionId: q.id })
+
+          // If questions can have options, grab em and stick em onto the question
+          if (canHaveOptions(q)) {
             q.options = await knex<{}, T.QuestionOption[]>('QuestionOption').select().where({ questionId: q.id })
+          }
         }))
 
         // If there's a user attached, we'll try to dig up their responses as well.
@@ -118,16 +122,12 @@ function Db(knex: Knex) {
               q.response = textResponse?.value
             } else if (q.type === 'SINGLE_CHOICE') {
               const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>('QuestionResponseChoice').select().where({ questionId: q.id, userId }).first()
-              const choiceOption = q.options.find(o => o.id === choiceResponse.optionId)
+              const choiceOption = q.options.find(o => o.id === choiceResponse?.optionId)
               q.response = choiceOption?.value
             } else if (q.type === 'MULTIPLE_CHOICE') {
               const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>('QuestionResponseChoice').select().where({ questionId: q.id, userId })
-              const choiceOptions = choiceResponses.map(r => q.options.find(o => o.id === r.optionId))
-              // console.log('db, in if(userId) block, multiple choice block, q:', q)
-              // console.log('db, in if(userId) block, multiple choice block, q.options:', q.options)
-              // console.log('db, in if(userId) block, multiple choice block, choiceResponses:', choiceResponses)
-              // console.log('db, in if(userId) block, multiple choice block, choiceOptions:', choiceOptions)
-              q.response = choiceOptions?.map(o => o.value)
+              const choiceOptions = choiceResponses.map(response => q.options.find(option => option.id === response.optionId))
+              q.response = choiceOptions.map(o => o.value)
             } else {
               throw new Error('Tried digging up a question type I did not recognize.')
             }
@@ -135,8 +135,6 @@ function Db(knex: Knex) {
         }
 
         questionnaire.questions = questions
-
-        // console.log('db: In Db, questionnaire, userId:', questionnaire, userId)
 
         return questionnaire
       },
@@ -150,11 +148,17 @@ function Db(knex: Knex) {
           if (!canHaveOptions(q)) return
 
           await Promise.all(q.options.map(async o => {
-            await knex('QuestionOption').insert({ questionId, value: o.value, text: o.text })
+            return knex('QuestionOption').insert({ questionId, value: o.value, text: o.text })
           }))
         }))
 
         return db.Questionnaire.findById(questionnaireId)
+      },
+
+      createQuestionRelations: async (relations: T.QuestionRelation[]) => {
+        await Promise.all(relations.map(async relation => {
+          await knex('QuestionRelation').insert(relation)
+        }))
       },
 
       submitBooleanQuestionResponse: async (userId: string, questionId: string, value: boolean) => {
@@ -182,9 +186,9 @@ function Db(knex: Knex) {
       // a live DB will result in epic disaster.
       clearDb: async () => {
         for (let table of [
-          'QuestionResponseBoolean', 'QuestionResponseText', 'QuestionResponseChoice',
-          'QuestionOption', 'Question', 'Questionnaire', 'UserHealth', 'UserLogin',
-          'User',
+          'QuestionRelation', 'QuestionResponseBoolean',
+          'QuestionResponseText', 'QuestionResponseChoice', 'QuestionOption',
+          'Question', 'Questionnaire', 'UserHealth', 'UserLogin', 'User',
         ]) {
           await knex.raw(`DELETE FROM ${table}`)
         }
