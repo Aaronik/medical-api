@@ -10,31 +10,13 @@ export default gql`
     question(id: Int!): Question
   }
 
-  # QuestionManager:
-  # nextQuestionId: [{prevQuestionId, includes?, equals?}, {prevQuestionId, includes?, equals?}]
-  # Once the series of conditions are met in the [], nextQuestionId is "triggered" or "assigned"
-  # to the user or something...
-
-  # TODO Let createUser take optional name, make email/pass/role required
-  # TODO Let doctors have patients?
-  # TODO Questions point to each other
-  # * Questions require an id on creation
-  #
-  # question = {
-  #   id: string
-  #   text: string
-  #   next: [{
-  #     includes?: string
-  #     equals?: string
-  #     nextQuestionId: string
-  #   }]
-  # }
   type Mutation {
     createUser(email:String, password:String, role:Role): User
     updateMe(user:MeInput): User
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
+    createQuestionRelations(relations: [QuestionRelationInput]): Boolean
     submitBooleanQuestionResponse(questionId: Int!, value: Boolean!): Boolean
     submitTextQuestionResponse(questionId: Int!, value: String!): Boolean
     submitChoiceQuestionResponse(questionId: Int!, value: String!): Boolean
@@ -90,6 +72,7 @@ export default gql`
     "This will always be 'TEXT'"
     type: QuestionType!
     response: String
+    next: [QuestionRelation]
   }
 
   type MultipleChoiceQuestion implements QuestionMeta {
@@ -103,6 +86,7 @@ export default gql`
 
     "Collection of QuestionOption values"
     response: [String]
+    next: [QuestionRelation]
   }
 
   type SingleChoiceQuestion implements QuestionMeta {
@@ -116,6 +100,7 @@ export default gql`
 
     "A single QuestionOption value"
     response: String
+    next: [QuestionRelation]
   }
 
   type BooleanQuestion implements QuestionMeta {
@@ -126,6 +111,7 @@ export default gql`
     "This will always be 'BOOLEAN'"
     type: QuestionType!
     response: Boolean
+    next: [QuestionRelation]
   }
 
   enum QuestionType {
@@ -142,9 +128,33 @@ export default gql`
     BOOLEAN
   }
 
+  input QuestionInput {
+    text: String
+    type: QuestionType
+    options: [QuestionOptionInput]
+  }
+
   type QuestionOption {
     value: String
     text: String
+  }
+
+  input QuestionOptionInput {
+    value: String
+    text: String
+  }
+
+  type QuestionRelation {
+    includes: String
+    equals: String
+    nextQuestionId: Int
+  }
+
+  input QuestionRelationInput {
+    questionId: Int
+    nextQuestionId: Int
+    includes: String
+    equals: String
   }
 
   interface QuestionMeta {
@@ -154,17 +164,7 @@ export default gql`
     "The question text the user sees"
     text: String
     type: QuestionType
-  }
-
-  input QuestionInput {
-    text: String
-    type: QuestionType
-    options: [QuestionOptionInput]
-  }
-
-  input QuestionOptionInput {
-    value: String
-    text: String
+    next: [QuestionRelation]
   }
 
 `

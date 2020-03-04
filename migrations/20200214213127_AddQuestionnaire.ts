@@ -78,10 +78,28 @@ export async function up(knex: Knex): Promise<any> {
       REFERENCES QuestionOption(id) ON DELETE CASCADE
     ) ENGINE=InnoDB
   `)
+
+  await knex.raw(`
+    CREATE TABLE IF NOT EXISTS QuestionRelation (
+      questionId int(11) NOT NULL,
+      includes text,
+      equals text,
+      nextQuestionId int(11) NOT NULL,
+
+      PRIMARY KEY (questionId, nextQuestionId),
+
+      CONSTRAINT question_relation_question FOREIGN KEY (questionId)
+      REFERENCES Question(id) ON DELETE CASCADE,
+
+      CONSTRAINT question_relation_next_question FOREIGN KEY (nextQuestionId)
+      REFERENCES Question(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB
+  `)
+
 }
 
 
 export async function down(knex: Knex): Promise<any> {
-  await knex.raw(`DROP TABLE IF EXISTS QuestionResponseChoice,QuestionResponseText,QuestionResponseBoolean,QuestionOption,Question,Questionnaire`)
+  await knex.raw(`DROP TABLE IF EXISTS QuestionRelation,QuestionResponseChoice,QuestionResponseText,QuestionResponseBoolean,QuestionOption,Question,Questionnaire`)
 }
 

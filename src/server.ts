@@ -44,9 +44,19 @@ export default function Server(knex: Knex) {
     typeDefs,
 
     context: async (ctx) => {
+      // return new Promise((resolve, reject) => {
+      //   setTimeout(async () => {
+      //     const token = ctx.req.headers?.authorization
+      //     if (!token) return {}
+      //     const user = await db.User.findByAuthToken(token)
+      //     resolve({ user, token })
+      //   }, 1000)
+      // })
+
       const token = ctx.req.headers?.authorization
       if (!token) return {}
       const user = await db.User.findByAuthToken(token)
+
       return { user, token }
     },
 
@@ -109,11 +119,9 @@ export default function Server(knex: Knex) {
         },
 
         createQuestionnaire: async (parent, args, context, info) => {
-          const { title, questions } = enforceArgs(args, 'title', 'questions')
+          const { title, questions }: { title: string, questions: T.Question[] } = enforceArgs(args, 'title', 'questions')
 
           // Make sure questions are shaped correctly too.
-          // TODO Make a type enforcement func? Really the GQL type
-          // system should be able to handle it.
           questions.forEach(q => {
             enforceArgs(q, 'type')
 
@@ -124,6 +132,9 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.create({ title, questions })
         },
 
+        createQuestionRelations: async (parent, { relations }, context, info) => {
+          return db.Questionnaire.createQuestionRelations(relations)
+        },
 
         submitBooleanQuestionResponse: async (parent, args, context, info) => {
           const { questionId, value } = enforceArgs(args, 'questionId', 'value')
