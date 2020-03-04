@@ -6,6 +6,7 @@ export default gql`
     me: User
     user(id: Int!): User
     users: [User]
+    questionnaires: [Questionnaire]
     questionnaire(id: Int!): Questionnaire
     question(id: Int!): Question
   }

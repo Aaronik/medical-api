@@ -67,6 +67,16 @@ const GET_QUESTIONNAIRE = gql`
   }
 `
 
+const GET_QUESTIONNAIRES = gql`
+  query {
+    questionnaires {
+      id
+      title
+      questions ${QUESTIONS_FRAGMENT}
+    }
+  }
+`
+
 const CREATE_QUESTIONNAIRE = gql`
   mutation CreateQuestionnaire($title: String, $questions: [QuestionInput]){
     createQuestionnaire(title: $title, questions: $questions) {
@@ -290,6 +300,27 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.deepEqual(gottenQuestionnaireErrors, undefined)
 
     t.equal(gottenQuestionnaire.questions.length, questions.length + extraQuestions.length, 'Questionnaire should have all the extra questions')
+
+    t.end()
+  })
+
+  test('GQL Create multiple questionnaires -> get them all', async t => {
+    await db._util.clearDb()
+
+    const { errors: firstCreateQuestionnaireErrors }
+      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+
+    t.deepEqual(firstCreateQuestionnaireErrors, undefined)
+
+    const { errors: secondCreateQuestionnaireErrors }
+      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+
+    t.deepEqual(secondCreateQuestionnaireErrors, undefined)
+
+    const { data: { questionnaires }, errors } = await query(server).asAdmin({ query: GET_QUESTIONNAIRES })
+
+    t.deepEqual(errors, undefined)
+    t.equal(questionnaires.length, 2, 'Getting all questionnaires should return two questionnaires')
 
     t.end()
   })

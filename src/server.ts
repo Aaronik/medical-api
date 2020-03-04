@@ -82,6 +82,10 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.findById(id, context.user?.id)
         },
 
+        questionnaires: async (parent, args, context, info) => {
+          return db.Questionnaire.all()
+        },
+
       },
 
       Mutation: {
