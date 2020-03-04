@@ -76,9 +76,9 @@ function Db(knex: Knex) {
         return userTables(knex).select()
       },
 
-      create: async (email: string, password: string, role: T.Role) => {
+      create: async (email: string, password: string, role: T.Role, name: string) => {
         const passwordHash = hashPassword(email, password)
-        const [userId] = await knex('User').insert({ role, email })
+        const [userId] = await knex('User').insert({ role, email, name })
         await knex('UserLogin').insert({ userId, passwordHash })
         await knex('UserHealth').insert({ userId })
         return db.User.findById(userId)

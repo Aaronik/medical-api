@@ -33,7 +33,7 @@ const runGqlAs = async (queryOptions: Mutation | Query, server: ApolloServer, ro
     else                       return query(queryOptions as Query)
   }
 
-  const [ email, password ] = [ `${role || 'UNPRIVILEGED'}@millitestuser.com`, 'password' ]
+  const [ email, password, name ] = [ `${role || 'UNPRIVILEGED'}@millitestuser.com`, 'password', role || 'UNPRIVILEGED' ]
 
   // 1) Try to sign in w/ email/pass
   // If good: create prived client, run query
@@ -46,7 +46,7 @@ const runGqlAs = async (queryOptions: Mutation | Query, server: ApolloServer, ro
   // So if the login didn't work, we'll assume that user has never been created (in this test at least).
   // So we create the user, and try to auth again.
   if (!token) {
-    await mutate({ mutation: CREATE_USER, variables: { email, password, role }})
+    await mutate({ mutation: CREATE_USER, variables: { email, password, role, name }})
     token = (await mutate({ mutation: AUTHENTICATE, variables: { email, password }})).data?.authenticate
   }
 
@@ -70,8 +70,8 @@ type Mutation = Parameters<ReturnType<typeof createTestClient>['mutate']>['0']
 type Query = Parameters<ReturnType<typeof createTestClient>['query']>['0']
 
 const CREATE_USER = gql`
-  mutation ($email: String, $password: String, $role: Role) {
-    createUser(email: $email, password: $password, role: $role) {
+  mutation ($email: String, $password: String, $role: Role, $name: String) {
+    createUser(email: $email, password: $password, role: $role, name: $name) {
       id
       email
     }

@@ -3,8 +3,8 @@ import createTestClient from 'test/create-test-client'
 import { TestModuleExport } from 'test/runner'
 
 const CREATE_USER = gql`
-  mutation ($email: String, $password: String, $role: Role) {
-    createUser(email: $email, password: $password, role: $role) {
+  mutation ($email: String, $password: String, $role: Role, $name: String) {
+    createUser(email: $email, password: $password, role: $role, name: $name) {
       id
       email
     }
@@ -29,6 +29,7 @@ const ME = gql`
   query {
     me{
       email
+      name
     }
   }
 `
@@ -59,8 +60,9 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     const email = 'test@email.com'
     const password = 'testPass'
+    const name = 'Princess Bubblegum'
 
-    const createResp = await signedOutClient.mutate({ mutation: CREATE_USER, variables: { email, password, role: 'ADMIN' }})
+    const createResp = await signedOutClient.mutate({ mutation: CREATE_USER, variables: { email, password, role: 'ADMIN', name }})
     const user = createResp?.data?.createUser
 
     t.equal(user?.email, email)
@@ -72,8 +74,9 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     const signedInClient = createTestClient(server, { authorization: token })
 
-    const meResp = await signedInClient.query({ query: ME })
-    t.equal(email, meResp?.data?.me?.email, 'After creating then authenticating a user, a request for "me" did not work.')
+    const { data: { me }} = await signedInClient.query({ query: ME })
+    t.equal(me?.email, email, 'After creating then authenticating a user, a request for "me" did not work.')
+    t.equal(me?.name, name, 'Creating a user, name was not created correctly.')
 
     const deauthResp = await signedInClient.mutate({ mutation: DEAUTH })
     t.equal(true, deauthResp?.data?.deauthenticate)
@@ -87,9 +90,10 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     const email1 = 'test@email.com'
     const email2 = 'test2@email.com'
     const password = 'testPass'
+    const name = 'Lumpy Space Princess'
 
-    const resp1 = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email: email1, password, role: 'ADMIN' }})
-    const resp2 = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email: email2, password, role: 'ADMIN' }})
+    const resp1 = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email: email1, password, role: 'ADMIN', name }})
+    const resp2 = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email: email2, password, role: 'ADMIN', name }})
 
     t.equal(resp1.data?.createUser?.email, email1)
     t.equal(resp2.data?.createUser?.email, email2)
@@ -106,13 +110,14 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     const email = 'test@email.com'
     const password = 'testPass'
+    const name = 'Me Mow'
 
-    const { data } = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email, password, role: 'ADMIN' }})
+    const { data } = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email, password, role: 'ADMIN', name }})
     const user = data?.createUser
 
     t.equal(user?.email, email)
 
-    const { errors } = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email, password, role: 'ADMIN' }})
+    const { errors } = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email, password, role: 'ADMIN', name }})
     const message = errors[0]?.message
     t.assert(message.includes('already exists'))
 
