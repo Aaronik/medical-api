@@ -17,6 +17,7 @@ export default gql`
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
+    deleteQuestionnaire(id: Int!): Boolean
     addQuestions(questions: [QuestionInput]): [Question]
     createQuestionRelations(relations: [QuestionRelationInput]): Boolean
     submitBooleanQuestionResponse(questionId: Int!, value: Boolean!): Boolean

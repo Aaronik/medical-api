@@ -117,6 +117,12 @@ const SUBMIT_CHOICE_RESPONSE = gql`
   }
 `
 
+const DELETE_QUESTIONNAIRE = gql`
+  mutation DeleteQuestionnaire($id: Int!) {
+    deleteQuestionnaire(id: $id)
+  }
+`
+
 const title = 'Questionnaire Test Title'
 
 const questions: Omit<Omit<Question, 'id'>, 'questionnaireId'>[] = [
@@ -317,6 +323,27 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     t.deepEqual(errors, undefined)
     t.equal(questionnaires.length, 2, 'Getting all questionnaires should return two questionnaires')
+
+    t.end()
+  })
+
+  test('GQL Create questionnaire -> delete questionnaire -> get them all', async t => {
+    await db._util.clearDb()
+
+    const { data: { createQuestionnaire: createdQuestionnaire }, errors: createQuestionnaireErrors }
+      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+
+    t.deepEqual(createQuestionnaireErrors, undefined)
+
+    const { errors: deleteErrors } = await mutate(server).asAdmin({ mutation: DELETE_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
+
+    t.deepEqual(deleteErrors, undefined)
+
+    const { data: { questionnaires }, errors: getErrors } = await query(server).asAdmin({ query: GET_QUESTIONNAIRES })
+
+    t.deepEqual(getErrors, undefined)
+
+    t.deepEqual(questionnaires, [], 'There shouldn\'t be any questionnaires after one is created and one is deleted')
 
     t.end()
   })

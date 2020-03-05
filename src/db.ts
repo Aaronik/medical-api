@@ -164,6 +164,10 @@ function Db(knex: Knex) {
         return db.Questionnaire.findById(questionnaireId)
       },
 
+      delete: async (id: number) => {
+        return knex('Questionnaire').where({ id }).delete()
+      },
+
       addQuestions: async (questions: T.Question[]) => {
         return await Promise.all(questions.map(async q => {
           const [questionId] = await knex('Question').insert({ questionnaireId: q.questionnaireId, text: q.text, type: q.type })
