@@ -146,6 +146,11 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.addQuestions(questions)
         },
 
+        deleteQuestion: async (parent, args, context, info) => {
+          const { id } = enforceArgs(args, 'id')
+          return db.Questionnaire.deleteQuestion(id)
+        },
+
         createQuestionRelations: async (parent, { relations }, context, info) => {
           return db.Questionnaire.createQuestionRelations(relations)
         },

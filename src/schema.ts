@@ -19,6 +19,7 @@ export default gql`
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
     deleteQuestionnaire(id: Int!): Boolean
     addQuestions(questions: [QuestionInput]): [Question]
+    deleteQuestion(id: Int!): Boolean
     createQuestionRelations(relations: [QuestionRelationInput]): Boolean
     submitBooleanQuestionResponse(questionId: Int!, value: Boolean!): Boolean
     submitTextQuestionResponse(questionId: Int!, value: String!): Boolean

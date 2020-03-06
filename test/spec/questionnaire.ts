@@ -93,6 +93,12 @@ const ADD_QUESTION = gql`
   }
 `
 
+const DELETE_QUESTION = gql`
+  mutation DeleteQuestion($id: Int!) {
+    deleteQuestion(id: $id)
+  }
+`
+
 const CREATE_QUESTION_RELATIONS = gql`
   mutation CreateQuestionRelations($relations: [QuestionRelationInput]) {
     createQuestionRelations(relations: $relations)
@@ -302,6 +308,26 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.deepEqual(gottenQuestionnaireErrors, undefined)
 
     t.equal(gottenQuestionnaire.questions.length, questions.length + extraQuestions.length, 'Questionnaire should have all the extra questions')
+
+    t.end()
+  })
+
+  test('GQL Submit Questionnaire -> Delete question', async t => {
+    const { data: { createQuestionnaire: createdQuestionnaire }, errors: createQuestionnaireErrors }
+      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+
+    t.deepEqual(createQuestionnaireErrors, undefined)
+
+    const { errors: deleteQuestionErrors } = await mutate(server).asAdmin({ mutation: DELETE_QUESTION, variables: { id: createdQuestionnaire.questions[0].id } })
+
+    t.deepEqual(deleteQuestionErrors, undefined)
+
+    const { data: { questionnaire: gottenQuestionnaire }, errors: gottenQuestionnaireErrors }
+      = await query(server).asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
+
+    t.deepEqual(gottenQuestionnaireErrors, undefined)
+
+    t.equal(gottenQuestionnaire.questions.length, questions.length - 1, 'There should be one fewer question after a question has been deleted')
 
     t.end()
   })

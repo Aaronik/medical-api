@@ -180,6 +180,10 @@ function Db(knex: Knex) {
         }))
       },
 
+      deleteQuestion: async (id: number) => {
+        return knex('Question').where({ id }).delete()
+      },
+
       createQuestionRelations: async (relations: T.QuestionRelation[]) => {
         await Promise.all(relations.map(async relation => {
           await knex('QuestionRelation').insert(relation)
