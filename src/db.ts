@@ -126,7 +126,7 @@ function Db(knex: Knex) {
       },
 
       update: async (update: Pick<T.User, 'id' | 'role' | 'email' | 'name' | 'imageUrl' | 'birthday'>) => {
-        await knex('User').update(update)
+        await knex('User').where({ id: update.id }).update(update)
         return db.User.findById(update.id)
       },
 
