@@ -30,6 +30,7 @@ const ME = gql`
     me{
       email
       name
+      role
     }
   }
 `
@@ -136,6 +137,10 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.deepEqual(errors, undefined)
 
     t.equal(data?.updateMe?.role, 'DOCTOR')
+
+    const { data: refetchData } = await query(server).asAdmin({ query: ME })
+
+    t.equal(refetchData?.me?.role, 'DOCTOR')
 
     t.end()
   })
