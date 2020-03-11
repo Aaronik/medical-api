@@ -15,7 +15,7 @@
     "sh-connect": "docker-compose run server sh",
     "generate-migration": "knex migrate:make -x ts",
     "migrations:raw:run": "knex migrate:latest",
-    "migrations:raw:revert": "knex migrate:rollback",
+    "migrations:raw:revert": "knex migrate:down",
     "migrations:docker:run": "docker-compose run server npm run migrations:raw:run",
     "migrations:docker:revert": "docker-compose run server npm run migrations:raw:revert",
     "test": "ts-node -r tsconfig-paths/register test/runner.ts | tap-summary",
