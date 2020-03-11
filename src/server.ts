@@ -6,33 +6,6 @@ import Db from 'src/db'
 import Knex from 'knex'
 import * as T from 'src/types.d'
 
-// Sigh, this is just how Apollo structures it. It'd be great if they'd export this type
-// but they inline it.
-type ApolloOptions = ApolloServerExpressConfig & {
-  cors?: CorsOptions | boolean;
-  onHealthCheck?: (req: Request) => Promise<any>;
-}
-
-// Helper to streamline the enforcement / destructuring of GQL argument
-// TODO It'd be rad if the output type of this actually utilized the fields given
-// so as to prevent something like const { id } = enforceArgs(args, 'field', 'gnoll', 'grassland')
-// (id not being on the list of permitted arguments, so not destructurable)
-const enforceArgs = <_, T>(args: any, ...fields: string[]) => {
-  fields.forEach(field => {
-    if (!args.hasOwnProperty(field)) throw new UserInputError(`You must provide the following fields: ${fields}`)
-  })
-
-  return args
-}
-
-// Helper to ensure user has sufficient permissions. Pass in however many roles,
-// and the helper will throw if the user doesn't satisfy any of those roles. Will
-// always fail if no user was passed in.
-export const enforceRoles = (user?: T.User, ...roles: T.Role[]) => {
-  if (roles.length === 0 && user) return
-  if (!user || !roles.includes(user.role)) throw new ForbiddenError('Insufficient permissions.')
-}
-
 // Abstracted so we can inject our db conection into it. This is so we can run tests and our dev/prod server
 // against different databases.
 //
@@ -44,15 +17,6 @@ export default function Server(knex: Knex) {
     typeDefs,
 
     context: async (ctx) => {
-      // return new Promise((resolve, reject) => {
-      //   setTimeout(async () => {
-      //     const token = ctx.req.headers?.authorization
-      //     if (!token) return {}
-      //     const user = await db.User.findByAuthToken(token)
-      //     resolve({ user, token })
-      //   }, 1000)
-      // })
-
       const token = ctx.req.headers?.authorization
       if (!token) return {}
       const user = await db.User.findByAuthToken(token)
@@ -196,3 +160,31 @@ export default function Server(knex: Knex) {
   return new ApolloServer(apolloOptions)
 
 }
+
+// Sigh, this is just how Apollo structures it. It'd be great if they'd export this type
+// but they inline it.
+type ApolloOptions = ApolloServerExpressConfig & {
+  cors?: CorsOptions | boolean;
+  onHealthCheck?: (req: Request) => Promise<any>;
+}
+
+// Helper to streamline the enforcement / destructuring of GQL argument
+// TODO It'd be rad if the output type of this actually utilized the fields given
+// so as to prevent something like const { id } = enforceArgs(args, 'field', 'gnoll', 'grassland')
+// (id not being on the list of permitted arguments, so not destructurable)
+const enforceArgs = <_, T>(args: any, ...fields: string[]) => {
+  fields.forEach(field => {
+    if (!args.hasOwnProperty(field)) throw new UserInputError(`You must provide the following fields: ${fields}`)
+  })
+
+  return args
+}
+
+// Helper to ensure user has sufficient permissions. Pass in however many roles,
+// and the helper will throw if the user doesn't satisfy any of those roles. Will
+// always fail if no user was passed in.
+export const enforceRoles = (user?: T.User, ...roles: T.Role[]) => {
+  if (roles.length === 0 && user) return
+  if (!user || !roles.includes(user.role)) throw new ForbiddenError('Insufficient permissions.')
+}
+

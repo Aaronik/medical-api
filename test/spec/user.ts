@@ -68,7 +68,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     t.equal(user?.email, email)
 
-    const authResp = await signedOutClient.mutate({ mutation: AUTHENTICATE, variables: { email, password, role: 'ADMIN' }})
+    const authResp = await signedOutClient.mutate({ mutation: AUTHENTICATE, variables: { email, password }})
     const token = authResp?.data?.authenticate
 
     t.assert(!!token, 'Should have received a token, but instead got: ' + token)
@@ -81,6 +81,41 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     const deauthResp = await signedInClient.mutate({ mutation: DEAUTH })
     t.equal(true, deauthResp?.data?.deauthenticate)
+
+    t.end()
+  })
+
+  test('GQL Create User -> Auth -> 2nd Auth -> Deauth 1', async t => {
+    await db._util.clearDb()
+
+    const signedOutClient = createTestClient(server)
+
+    const email = 'test@email.com'
+    const password = 'testPass'
+    const name = 'Princess Bubblegum'
+
+    await signedOutClient.mutate({ mutation: CREATE_USER, variables: { email, password, role: 'ADMIN', name }})
+
+    const { data: { authenticate: token1 }} = await signedOutClient.mutate({ mutation: AUTHENTICATE, variables: { email, password }})
+    const { data: { authenticate: token2 }} = await signedOutClient.mutate({ mutation: AUTHENTICATE, variables: { email, password }})
+
+    t.notEqual(token1, token2,
+     `Should have gotten two separate tokens from two separate auth requests.
+      This allows for managing logged in state across multiple clients, not
+      being logged out of all when you log out of one.`
+    )
+
+    const signedInClient1 = createTestClient(server, { authorization: token1 })
+    const signedInClient2 = createTestClient(server, { authorization: token2 })
+
+    const deauthResp = await signedInClient1.mutate({ mutation: DEAUTH })
+    t.equal(true, deauthResp?.data?.deauthenticate)
+
+    const { data: { me }} = await signedInClient2.query({ query: ME })
+    t.equal(me?.email, email)
+
+    const { errors } = await signedInClient1.query({ query: ME })
+    t.deepEqual(errors[0].message, 'No user is currently authenticated.')
 
     t.end()
   })

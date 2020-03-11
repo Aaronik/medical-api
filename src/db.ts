@@ -5,70 +5,6 @@ import * as T from 'src/types.d'
 import { ApolloServer, AuthenticationError, UserInputError, ForbiddenError, ValidationError } from 'apollo-server'
 import * as _ from 'lodash'
 
-// For now, we're going to store authenticate tokens here. This is because authentication
-// will happen on every request, so we're going to use this as an in-memory data store rather
-// than hitting SQL every time.
-let tokenMap: { [token: string]: number } = {}
-
-const hashPassword = (email: string, password: string) => {
-  const salt = bcrypt.genSaltSync(8)
-  return bcrypt.hashSync(password, salt)
-}
-
-// For CCPA/GDPR/HIPPA reasons, we break our users up into multiple tables.
-// This helper helps us put them back together again.
-const userTables = (knex: Knex) => {
-  return knex<{}, T.User>('User')
-    .join('UserHealth', 'User.id', 'UserHealth.userId')
-    .join('UserLogin', 'User.id', 'UserLogin.userId')
-}
-
-// Helper to know if a question is of the type that has options on it
-const canHaveOptions = (question: T.Question) => {
-  return ['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(question.type)
-}
-
-const constructQuestionnaire = async (knex: Knex, questionnaire: Partial<T.Questionnaire>, userId: number): Promise<T.Questionnaire> => {
-  const questions = await knex<{}, T.Question[]>('Question').select('*').where({ questionnaireId: questionnaire.id })
-
-  await Promise.all(questions.map(async q => {
-    // Grab each question relation and assign to question
-    q.next = await knex<{}, T.QuestionRelation>('QuestionRelation').select().where({ questionId: q.id })
-
-    // If questions can have options, grab em and stick em onto the question
-    if (canHaveOptions(q)) {
-      q.options = await knex<{}, T.QuestionOption[]>('QuestionOption').select().where({ questionId: q.id })
-    }
-  }))
-
-  // If there's a user attached, we'll try to dig up their responses as well.
-  if (userId) {
-    await Promise.all(questions.map(async q => {
-      if (q.type === 'BOOLEAN') {
-        const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>('QuestionResponseBoolean').select().where({ questionId: q.id, userId }).first()
-        q.response = !!booleanResponse?.value // MySQL stores bool as binary
-      } else if (q.type === 'TEXT') {
-        const textResponse = await knex<{}, T.DBQuestionResponseText>('QuestionResponseText').select().where({ questionId: q.id, userId }).first()
-        q.response = textResponse?.value
-      } else if (q.type === 'SINGLE_CHOICE') {
-        const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>('QuestionResponseChoice').select().where({ questionId: q.id, userId }).first()
-        const choiceOption = q.options.find(o => o.id === choiceResponse?.optionId)
-        q.response = choiceOption?.value
-      } else if (q.type === 'MULTIPLE_CHOICE') {
-        const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>('QuestionResponseChoice').select().where({ questionId: q.id, userId })
-        const choiceOptions = choiceResponses.map(response => q.options.find(option => option.id === response.optionId))
-        q.response = choiceOptions.map(o => o.value)
-      } else {
-        throw new Error('Tried digging up a question type I did not recognize.')
-      }
-    }))
-  }
-
-  questionnaire.questions = questions
-
-  return questionnaire as T.Questionnaire
-}
-
 function Db(knex: Knex) {
 
   const db = {
@@ -83,15 +19,13 @@ function Db(knex: Knex) {
         if (!hasCorrectPassword) throw new AuthenticationError('Incorrect email/password combination.')
 
         const token = uuid()
-        tokenMap[token] = user.id
+        await knex('UserToken').insert({ userId: user.id, token })
 
         return token
       },
 
       deauthenticate: async (token: string): Promise<true> => {
-        const userId = tokenMap[token]
-        if (!userId) throw new AuthenticationError('Invalid token.')
-        delete tokenMap[token]
+        await knex('UserToken').where({ token }).delete()
         return true
       },
 
@@ -108,9 +42,9 @@ function Db(knex: Knex) {
       },
 
       findByAuthToken: async (token: string): Promise<T.User | false> => {
-        const userId = tokenMap[token]
-        if (!userId) return false
-        return db.User.findById(userId)
+        const userTokenInfo = await knex('UserToken').where({ token }).first()
+        if (!userTokenInfo) return false
+        return db.User.findById(userTokenInfo.userId)
       },
 
       findAll: async () => {
@@ -217,12 +151,10 @@ function Db(knex: Knex) {
         for (let table of [
           'QuestionRelation', 'QuestionResponseBoolean',
           'QuestionResponseText', 'QuestionResponseChoice', 'QuestionOption',
-          'Question', 'Questionnaire', 'UserHealth', 'UserLogin', 'User',
+          'Question', 'Questionnaire', 'UserToken', 'UserHealth', 'UserLogin', 'User',
         ]) {
           await knex.raw(`DELETE FROM ${table}`)
         }
-
-        tokenMap = {}
       },
 
       // It doesn't need to be said here as well. (see above)
@@ -243,6 +175,65 @@ function Db(knex: Knex) {
   }
 
   return db
+}
+
+const hashPassword = (email: string, password: string) => {
+  const salt = bcrypt.genSaltSync(8)
+  return bcrypt.hashSync(password, salt)
+}
+
+// For CCPA/GDPR/HIPPA reasons, we break our users up into multiple tables.
+// This helper helps us put them back together again.
+const userTables = (knex: Knex) => {
+  return knex<{}, T.User>('User')
+    .join('UserHealth', 'User.id', 'UserHealth.userId')
+    .join('UserLogin', 'User.id', 'UserLogin.userId')
+}
+
+// Helper to know if a question is of the type that has options on it
+const canHaveOptions = (question: T.Question) => {
+  return ['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(question.type)
+}
+
+const constructQuestionnaire = async (knex: Knex, questionnaire: Partial<T.Questionnaire>, userId: number): Promise<T.Questionnaire> => {
+  const questions = await knex<{}, T.Question[]>('Question').select('*').where({ questionnaireId: questionnaire.id })
+
+  await Promise.all(questions.map(async q => {
+    // Grab each question relation and assign to question
+    q.next = await knex<{}, T.QuestionRelation>('QuestionRelation').select().where({ questionId: q.id })
+
+    // If questions can have options, grab em and stick em onto the question
+    if (canHaveOptions(q)) {
+      q.options = await knex<{}, T.QuestionOption[]>('QuestionOption').select().where({ questionId: q.id })
+    }
+  }))
+
+  // If there's a user attached, we'll try to dig up their responses as well.
+  if (userId) {
+    await Promise.all(questions.map(async q => {
+      if (q.type === 'BOOLEAN') {
+        const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>('QuestionResponseBoolean').select().where({ questionId: q.id, userId }).first()
+        q.response = !!booleanResponse?.value // MySQL stores bool as binary
+      } else if (q.type === 'TEXT') {
+        const textResponse = await knex<{}, T.DBQuestionResponseText>('QuestionResponseText').select().where({ questionId: q.id, userId }).first()
+        q.response = textResponse?.value
+      } else if (q.type === 'SINGLE_CHOICE') {
+        const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>('QuestionResponseChoice').select().where({ questionId: q.id, userId }).first()
+        const choiceOption = q.options.find(o => o.id === choiceResponse?.optionId)
+        q.response = choiceOption?.value
+      } else if (q.type === 'MULTIPLE_CHOICE') {
+        const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>('QuestionResponseChoice').select().where({ questionId: q.id, userId })
+        const choiceOptions = choiceResponses.map(response => q.options.find(option => option.id === response.optionId))
+        q.response = choiceOptions.map(o => o.value)
+      } else {
+        throw new Error('Tried digging up a question type I did not recognize.')
+      }
+    }))
+  }
+
+  questionnaire.questions = questions
+
+  return questionnaire as T.Questionnaire
 }
 
 export default Db

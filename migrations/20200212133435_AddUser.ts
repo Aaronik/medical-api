@@ -33,10 +33,22 @@ export async function up(knex: Knex): Promise<any> {
       REFERENCES User(id) ON DELETE CASCADE
     ) ENGINE=InnoDB
   `)
+
+  await knex.raw(`
+    CREATE TABLE IF NOT EXISTS UserToken (
+      userId int(11) NOT NULL,
+      token char(36) NOT NULL,
+
+      PRIMARY KEY (userId, token),
+
+      CONSTRAINT user_token_user FOREIGN KEY (userId)
+      REFERENCES User(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB
+  `)
 }
 
 
 export async function down(knex: Knex): Promise<any> {
-  await knex.raw(`DROP TABLE IF EXISTS UserHealth,UserLogin,User`)
+  await knex.raw(`DROP TABLE IF EXISTS UserToken,UserHealth,UserLogin,User`)
 }
 
