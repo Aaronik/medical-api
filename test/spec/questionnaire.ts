@@ -77,6 +77,12 @@ const GET_QUESTIONNAIRES = gql`
   }
 `
 
+const GET_QUESTION = gql`
+  query Question($id: Int!) {
+    question(id: $id) ${QUESTIONS_FRAGMENT}
+  }
+`
+
 const CREATE_QUESTIONNAIRE = gql`
   mutation CreateQuestionnaire($title: String, $questions: [QuestionInput]){
     createQuestionnaire(title: $title, questions: $questions) {
@@ -172,6 +178,23 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.end()
   })
 
+  test('GQL Add Questionnaire -> Get Question', async t => {
+    const { data: { createQuestionnaire: questionnaire }} =
+      await mutate(server).asUnprived({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+
+    t.equal(questionnaire?.questions?.length, questions.length)
+
+    const singleChoiceQuestion = questionnaire?.questions?.find(q => q.type === 'SINGLE_CHOICE')
+
+    t.ok(singleChoiceQuestion.id)
+
+    const { data: { question } } = await query(server).asUnprived({ query: GET_QUESTION, variables: { id: singleChoiceQuestion.id }})
+
+    t.ok(question)
+
+    t.end()
+  })
+
   test('GQL Get Questionnaire that doesn\'t exist', async t => {
     await db._util.clearDb()
 
@@ -185,6 +208,8 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Submit Responses to Questionnaire -> Retrieve Questionnaire with responses', async t => {
+    await db._util.clearDb()
+
     const createResp = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
     t.deepEqual(createResp.errors, undefined, 'Received unexpected GQL error')
@@ -225,6 +250,13 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.equal(getQuestionOfType(gottenQuestionnaire, 'TEXT').textResp, 'text answer')
     t.equal(getQuestionOfType(gottenQuestionnaire, 'SINGLE_CHOICE').singleChoiceResp, singleChoiceResponse)
     t.deepEqual(getQuestionOfType(gottenQuestionnaire, 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceResponse])
+
+    const { data: { questionnaires }} = await query(server).asPatient({ query: GET_QUESTIONNAIRES })
+
+    t.equal(getQuestionOfType(questionnaires[0], 'BOOLEAN').boolResp, true)
+    t.equal(getQuestionOfType(questionnaires[0], 'TEXT').textResp, 'text answer')
+    t.equal(getQuestionOfType(questionnaires[0], 'SINGLE_CHOICE').singleChoiceResp, singleChoiceResponse)
+    t.deepEqual(getQuestionOfType(questionnaires[0], 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceResponse])
 
     t.end()
   })

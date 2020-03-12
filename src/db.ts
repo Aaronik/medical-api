@@ -70,15 +70,17 @@ function Db(knex: Knex) {
 
       // If the userId is supplied, we'll try to dig up their responses as well.
       findById: async (id: number, userId?: number): Promise<T.Questionnaire | null> => {
-        const questionnaire = await knex<{}, T.Questionnaire>('Questionnaire').select('*').where({ id }).first()
+        const questionnaire = await knex<{}, T.Questionnaire>('Questionnaire').where({ id }).first()
         if (!questionnaire) return null
-        return constructQuestionnaire(knex, questionnaire, userId)
+        questionnaire.questions = await db.Question.findByQuestionnaireId(questionnaire.id, userId)
+        return questionnaire
       },
 
       all: async (userId?: number) => {
-        const questionnaires = await knex('Questionnaire').select('*')
+        const questionnaires = await knex('Questionnaire').select()
         return Promise.all(questionnaires.map(async questionnaire => {
-          return await constructQuestionnaire(knex, questionnaire, userId)
+          questionnaire.questions = await db.Question.findByQuestionnaireId(questionnaire.id, userId)
+          return questionnaire
         }))
       },
 
@@ -100,22 +102,6 @@ function Db(knex: Knex) {
 
       delete: async (id: number) => {
         return knex('Questionnaire').where({ id }).delete()
-      },
-
-      addQuestions: async (questions: T.Question[]) => {
-        return await Promise.all(questions.map(async q => {
-          const [questionId] = await knex('Question').insert({ questionnaireId: q.questionnaireId, text: q.text, type: q.type })
-
-          q.options?.forEach(async o => {
-            await knex('QuestionOption').insert({ questionId, value: o.value, text: o.text })
-          })
-
-          return Object.assign({ id: questionId }, q)
-        }))
-      },
-
-      deleteQuestion: async (id: number) => {
-        return knex('Question').where({ id }).delete()
       },
 
       createQuestionRelations: async (relations: T.QuestionRelation[]) => {
@@ -141,6 +127,75 @@ function Db(knex: Knex) {
         await knex('QuestionResponseChoice').insert({ userId, questionId, optionId })
         return true
       },
+
+    },
+
+    Question: {
+
+      findById: async (id: number, userId?: number) => {
+        const questions = await db.Question._findWhere({ id }, userId)
+        if (!questions) return undefined
+        return questions[0]
+      },
+
+      findByQuestionnaireId: async (id: number, userId?: number) => {
+        return db.Question._findWhere({ questionnaireId: id }, userId)
+      },
+
+      create: async (questions: T.Question[]) => {
+        return await Promise.all(questions.map(async q => {
+          const [questionId] = await knex('Question').insert({ questionnaireId: q.questionnaireId, text: q.text, type: q.type })
+
+          q.options?.forEach(async o => {
+            await knex('QuestionOption').insert({ questionId, value: o.value, text: o.text })
+          })
+
+          return Object.assign({ id: questionId }, q)
+        }))
+      },
+
+      delete: async (id: number) => {
+        return knex('Question').where({ id }).delete()
+      },
+
+      _findWhere: async (where: Partial<T.Question>, userId?: number): Promise<T.Question[]> => {
+        let questions = await knex<{}, T.Question[]>('Question').where(where)
+
+        await Promise.all(questions.map(async q => {
+          // Grab each question relation and assign to question
+          q.next = await knex<{}, T.QuestionRelation[]>('QuestionRelation').where({ questionId: q.id })
+
+          // If questions can have options, grab em and stick em onto the question
+          if (canHaveOptions(q))
+            q.options = await knex<{}, T.QuestionOption[]>('QuestionOption').where({ questionId: q.id })
+        }))
+
+        if (!userId) return questions
+
+        // If there's a user attached, we'll try to dig up their responses as well.
+        await Promise.all(questions.map(async q => {
+          const questionId = q.id
+
+          if (q.type === 'BOOLEAN') {
+            const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>('QuestionResponseBoolean').where({ questionId, userId }).first()
+            q.response = !!booleanResponse?.value // MySQL stores bool as binary
+          } else if (q.type === 'TEXT') {
+            const textResponse = await knex<{}, T.DBQuestionResponseText>('QuestionResponseText').where({ questionId, userId }).first()
+            q.response = textResponse?.value
+          } else if (q.type === 'SINGLE_CHOICE') {
+            const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>('QuestionResponseChoice').where({ questionId, userId }).first()
+            const choiceOption = q.options.find(o => o.id === choiceResponse?.optionId)
+            q.response = choiceOption?.value
+          } else if (q.type === 'MULTIPLE_CHOICE') {
+            const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>('QuestionResponseChoice').where({ questionId, userId })
+            const choiceOptions = choiceResponses.map(response => q.options.find(option => option.id === response.optionId))
+            q.response = choiceOptions.map(o => o.value)
+          }
+        }))
+
+        return questions
+      },
+
 
     },
 
@@ -193,47 +248,6 @@ const userTables = (knex: Knex) => {
 // Helper to know if a question is of the type that has options on it
 const canHaveOptions = (question: T.Question) => {
   return ['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(question.type)
-}
-
-const constructQuestionnaire = async (knex: Knex, questionnaire: Partial<T.Questionnaire>, userId: number): Promise<T.Questionnaire> => {
-  const questions = await knex<{}, T.Question[]>('Question').select('*').where({ questionnaireId: questionnaire.id })
-
-  await Promise.all(questions.map(async q => {
-    // Grab each question relation and assign to question
-    q.next = await knex<{}, T.QuestionRelation>('QuestionRelation').select().where({ questionId: q.id })
-
-    // If questions can have options, grab em and stick em onto the question
-    if (canHaveOptions(q)) {
-      q.options = await knex<{}, T.QuestionOption[]>('QuestionOption').select().where({ questionId: q.id })
-    }
-  }))
-
-  // If there's a user attached, we'll try to dig up their responses as well.
-  if (userId) {
-    await Promise.all(questions.map(async q => {
-      if (q.type === 'BOOLEAN') {
-        const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>('QuestionResponseBoolean').select().where({ questionId: q.id, userId }).first()
-        q.response = !!booleanResponse?.value // MySQL stores bool as binary
-      } else if (q.type === 'TEXT') {
-        const textResponse = await knex<{}, T.DBQuestionResponseText>('QuestionResponseText').select().where({ questionId: q.id, userId }).first()
-        q.response = textResponse?.value
-      } else if (q.type === 'SINGLE_CHOICE') {
-        const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>('QuestionResponseChoice').select().where({ questionId: q.id, userId }).first()
-        const choiceOption = q.options.find(o => o.id === choiceResponse?.optionId)
-        q.response = choiceOption?.value
-      } else if (q.type === 'MULTIPLE_CHOICE') {
-        const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>('QuestionResponseChoice').select().where({ questionId: q.id, userId })
-        const choiceOptions = choiceResponses.map(response => q.options.find(option => option.id === response.optionId))
-        q.response = choiceOptions.map(o => o.value)
-      } else {
-        throw new Error('Tried digging up a question type I did not recognize.')
-      }
-    }))
-  }
-
-  questionnaire.questions = questions
-
-  return questionnaire as T.Questionnaire
 }
 
 export default Db

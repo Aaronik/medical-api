@@ -6,6 +6,11 @@ export default gql`
     me: User
     user(id: Int!): User
     users: [User]
+    patients(doctorId: Int!): [User]
+
+    timelineItems(userId: Int!): [TimelineItem]
+    timelineGroups: [TimelineGroup]
+
     questionnaires: [Questionnaire]
     questionnaire(id: Int!): Questionnaire
     question(id: Int!): Question
@@ -14,16 +19,56 @@ export default gql`
   type Mutation {
     createUser(email:String, password:String, role:Role, name:String): User
     updateMe(user:MeInput): User
+
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
+
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
     deleteQuestionnaire(id: Int!): Boolean
     addQuestions(questions: [QuestionInput]): [Question]
     deleteQuestion(id: Int!): Boolean
     createQuestionRelations(relations: [QuestionRelationInput]): Boolean
+
     submitBooleanQuestionResponse(questionId: Int!, value: Boolean!): Boolean
     submitTextQuestionResponse(questionId: Int!, value: String!): Boolean
     submitChoiceQuestionResponse(questionId: Int!, value: String!): Boolean
+  }
+
+  ### Timeline
+
+  type TimelineItem {
+    className: String
+    content: String
+    end: String
+    group: Int
+    id: Int
+    start: String
+    style: String
+    subgroup: Int
+    title: String
+    type: TimelineItemType
+    editable: Boolean
+    selectable: Boolean
+  }
+
+  type TimelineGroup {
+    className: String
+    content: String
+    id: Int
+    style: String
+    order: Int
+    subgroupOrder: String
+    title: String
+    visible: Boolean
+    nestedGroups: [Int]
+    showNested: Boolean
+  }
+
+  enum TimelineItemType {
+    box,
+    point,
+    range,
+    background
   }
 
   ### User

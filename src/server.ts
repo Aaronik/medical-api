@@ -41,14 +41,19 @@ export default function Server(knex: Knex) {
           throw new AuthenticationError('No user is currently authenticated.')
         },
 
+        questionnaires: async (parent, args, context, info) => {
+          return db.Questionnaire.all(context.user?.id)
+        },
+
         questionnaire: async (parent, args, context, info) => {
           const { id } = enforceArgs(args, 'id')
           return db.Questionnaire.findById(id, context.user?.id)
         },
 
-        questionnaires: async (parent, args, context, info) => {
-          return db.Questionnaire.all()
-        },
+        question: async (parent, args, context, info) => {
+          const { id } = enforceArgs(args, 'id')
+          return db.Question.findById(id, context.user?.id)
+        }
 
       },
 
@@ -107,12 +112,12 @@ export default function Server(knex: Knex) {
 
         addQuestions: async (parent, { questions }, context, info) => {
           questions.forEach(q => enforceArgs(q, 'text', 'type', 'questionnaireId'))
-          return db.Questionnaire.addQuestions(questions)
+          return db.Question.create(questions)
         },
 
         deleteQuestion: async (parent, args, context, info) => {
           const { id } = enforceArgs(args, 'id')
-          return db.Questionnaire.deleteQuestion(id)
+          return db.Question.delete(id)
         },
 
         createQuestionRelations: async (parent, { relations }, context, info) => {
