@@ -81,12 +81,11 @@ export async function up(knex: Knex): Promise<any> {
 
   await knex.raw(`
     CREATE TABLE IF NOT EXISTS QuestionRelation (
+      id int(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,
       questionId int(11) NOT NULL,
       includes text,
       equals text,
       nextQuestionId int(11) NOT NULL,
-
-      PRIMARY KEY (questionId, nextQuestionId),
 
       CONSTRAINT question_relation_question FOREIGN KEY (questionId)
       REFERENCES Question(id) ON DELETE CASCADE,
