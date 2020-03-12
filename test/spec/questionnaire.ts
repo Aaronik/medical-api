@@ -154,8 +154,6 @@ const questions: Omit<Omit<Question, 'id'>, 'questionnaireId'>[] = [
 
 export const test: TestModuleExport = (test, query, mutate, knex, db, server) => {
   test('GQL Add Questionnaire -> Get Questionnaire', async t => {
-    await db._util.clearDb()
-
     const { data, errors } = await mutate(server).asUnprived({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
     t.deepEqual(errors, undefined, 'Received unexpected GQL error')
@@ -187,8 +185,6 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Submit Responses to Questionnaire -> Retrieve Questionnaire with responses', async t => {
-    await db._util.clearDb()
-
     const createResp = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
     t.deepEqual(createResp.errors, undefined, 'Received unexpected GQL error')
