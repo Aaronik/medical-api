@@ -9,7 +9,9 @@ export default gql`
     patients(doctorId: Int!): [User]
 
     timelineItems(userId: Int!): [TimelineItem]
+    timelineItem(id: Int!): TimelineItem
     timelineGroups: [TimelineGroup]
+    timelineGroup(id: Int!): TimelineGroup
 
     questionnaires: [Questionnaire]
     questionnaire(id: Int!): Questionnaire
@@ -24,7 +26,9 @@ export default gql`
     deauthenticate: Boolean
 
     createTimelineItem(item: TimelineItemInput!): TimelineItem
+    updateTimelineItem(item: TimelineItemInput!): TimelineItem
     createTimelineGroup(group: TimelineGroupInput!): TimelineGroup
+    updateTimelineGroup(group: TimelineGroupInput!): TimelineGroup
 
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
     deleteQuestionnaire(id: Int!): Boolean
@@ -52,6 +56,7 @@ export default gql`
     type: TimelineItemType
     editable: Boolean
     selectable: Boolean
+    userId: Int
   }
 
   type TimelineGroup {
@@ -75,6 +80,7 @@ export default gql`
   }
 
   input TimelineItemInput {
+    id: Int
     className: String
     content: String
     end: String
@@ -86,9 +92,11 @@ export default gql`
     type: TimelineItemType
     editable: Boolean
     selectable: Boolean
+    userId: Int
   }
 
   input TimelineGroupInput {
+    id: Int
     className: String
     content: String
     style: String

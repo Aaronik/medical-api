@@ -200,6 +200,14 @@ function Db(knex: Knex) {
 
     Timeline: {
 
+      findItemById: async (id: number) => {
+        return knex('TimelineItem').where({ id }).first()
+      },
+
+      findGroupById: async (id: number) => {
+        return knex('TimelineGroup').where({ id }).first()
+      },
+
       itemsByUserId: async (userId: number) => {
         return knex('TimelineItem').where({ userId })
       },
@@ -213,15 +221,25 @@ function Db(knex: Knex) {
       },
 
       createItem: async (item: T.TimelineItem) => {
-        item.start = new Date(item.start)
-        item.end = item.end && new Date(item.start)
-
+        item = sanitizeTimelineItem(item)
         const [id] = await knex('TimelineItem').insert(item)
         return knex('TimelineItem').where({ id }).first()
       },
 
+      updateItem: async (update: Partial<T.TimelineItem>) => {
+        update = sanitizeTimelineItem(update)
+        await knex('TimelineItem').where({ id: update.id }).update(update)
+        return db.Timeline.findItemById(update.id)
+      },
+
+      updateGroup: async (update: Partial<T.TimelineGroup>) => {
+        await knex('TimelineGroup').where({ id: update.id }).update(update)
+        return db.Timeline.findGroupById(update.id)
+      },
+
       createGroup: async (group: T.TimelineGroup) => {
-        return knex('TimelineItem').insert(group)
+        const [id] = await knex('TimelineGroup').insert(group)
+        return knex('TimelineGroup').where({ id }).first()
       },
 
     },
@@ -238,7 +256,12 @@ function Db(knex: Knex) {
           'Questionnaire',
           'UserToken', 'UserHealth', 'UserLogin', 'User',
         ]) {
-          await knex.raw(`DELETE FROM ${table}`)
+          try {
+            await knex.raw(`DELETE FROM ${table}`)
+          } catch (e) {
+            console.error('Got an error deleting from table:', table)
+            throw e
+          }
         }
       },
 
@@ -278,6 +301,13 @@ const userTables = (knex: Knex) => {
 // Helper to know if a question is of the type that has options on it
 const canHaveOptions = (question: T.Question) => {
   return ['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(question.type)
+}
+
+// Ensures timeline item is correct format _to go into the database_
+const sanitizeTimelineItem = <T extends Partial<T.TimelineItem>>(item: T) => {
+  if (item.start) item.start = new Date(item.start)
+  if (item.end) item.end = new Date(item.end)
+  return item
 }
 
 export default Db

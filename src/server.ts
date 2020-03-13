@@ -60,6 +60,22 @@ export default function Server(knex: Knex) {
           return db.Timeline.itemsByUserId(userId)
         },
 
+        timelineItem: async (parent, args, context, info) => {
+          const { id } = enforceArgs(args, 'id')
+          return db.Timeline.findItemById(id)
+        },
+
+        timelineGroups: async (parent, args, context, info) => {
+          return db.Timeline.groups()
+        },
+
+
+        timelineGroup: async (parent, args, context, info) => {
+          const { id } = enforceArgs(args, 'id')
+          return db.Timeline.findGroupById(id)
+        },
+
+
       },
 
       Mutation: {
@@ -103,10 +119,24 @@ export default function Server(knex: Knex) {
           return db.Timeline.createItem(item)
         },
 
+        updateTimelineItem: async (parent, args, context, info) => {
+          enforceRoles(context.user)
+          const { item } = enforceArgs(args, 'item')
+          enforceArgs(item, 'id')
+          return db.Timeline.updateItem(item)
+        },
+
         createTimelineGroup: async (parent, args, context, info) => {
           enforceRoles(context.user)
-          const { group } = enforceArgs(args, 'item')
+          const { group } = enforceArgs(args, 'group')
           return db.Timeline.createGroup(group)
+        },
+
+        updateTimelineGroup: async (parent, args, context, info) => {
+          enforceRoles(context.user)
+          const { group } = enforceArgs(args, 'group')
+          enforceArgs(group, 'id')
+          return db.Timeline.updateGroup(group)
         },
 
         createQuestionnaire: async (parent, args, context, info) => {
