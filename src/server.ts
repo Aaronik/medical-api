@@ -41,6 +41,16 @@ export default function Server(knex: Knex) {
           throw new AuthenticationError('No user is currently authenticated.')
         },
 
+        patients: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR')
+          return db.User.findPatientsByDoctorId(context.user.id)
+        },
+
+        doctors: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'PATIENT')
+          return db.User.findDoctorsForPatientId(context.user.id)
+        },
+
         questionnaires: async (parent, args, context, info) => {
           return db.Questionnaire.all(context.user?.id)
         },
@@ -110,6 +120,16 @@ export default function Server(knex: Knex) {
 
         deauthenticate: async (parent, args, context, info) => {
           return db.Auth.deauthenticate(context.token)
+        },
+
+        assignPatientToDoctor: async (parent, args, context, info) => {
+          const { doctorId, patientId } = enforceArgs(args, 'patientId', 'doctorId')
+          return db.User.createDoctorPatientAssociation(doctorId, patientId)
+        },
+
+        unassignPatientFromDoctor: async (parent, args, context, info) => {
+          const { doctorId, patientId } = enforceArgs(args, 'patientId', 'doctorId')
+          return db.User.destroyDoctorPatientAssociation(doctorId, patientId)
         },
 
         createTimelineItem: async (parent, args, context, info) => {

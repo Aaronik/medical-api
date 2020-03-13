@@ -6,7 +6,8 @@ export default gql`
     me: User
     user(id: Int!): User
     users: [User]
-    patients(doctorId: Int!): [User]
+    patients: [User]
+    doctors: [User]
 
     timelineItems(userId: Int!): [TimelineItem]
     timelineItem(id: Int!): TimelineItem
@@ -24,6 +25,9 @@ export default gql`
 
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
+
+    assignPatientToDoctor(patientId: Int!, doctorId: Int!): Boolean
+    unassignPatientFromDoctor(patientId: Int!, doctorId: Int!): Boolean
 
     createTimelineItem(item: TimelineItemInput!): TimelineItem
     updateTimelineItem(item: TimelineItemInput!): TimelineItem

@@ -33,6 +33,19 @@ function Db(knex: Knex) {
 
     User: {
 
+      create: async (email: string, password: string, role: T.Role, name: string) => {
+        const passwordHash = hashPassword(email, password)
+        const [userId] = await knex('User').insert({ role, email, name })
+        await knex('UserLogin').insert({ userId, passwordHash })
+        await knex('UserHealth').insert({ userId })
+        return db.User.findById(userId)
+      },
+
+      update: async (update: Pick<T.User, 'id' | 'role' | 'email' | 'name' | 'imageUrl' | 'birthday'>) => {
+        await knex('User').where({ id: update.id }).update(update)
+        return db.User.findById(update.id)
+      },
+
       findById: async (id: number) => {
         return await userTables(knex).first().where({ id })
       },
@@ -51,19 +64,27 @@ function Db(knex: Knex) {
         return userTables(knex).select()
       },
 
-      create: async (email: string, password: string, role: T.Role, name: string) => {
-        const passwordHash = hashPassword(email, password)
-        const [userId] = await knex('User').insert({ role, email, name })
-        await knex('UserLogin').insert({ userId, passwordHash })
-        await knex('UserHealth').insert({ userId })
-        return db.User.findById(userId)
+      findPatientsByDoctorId: async (doctorId: number) => {
+        return await knex('DoctorPatientRelationship')
+          .join('User', 'DoctorPatientRelationship.patientId', 'User.id')
+          .where({ doctorId })
       },
 
-      update: async (update: Pick<T.User, 'id' | 'role' | 'email' | 'name' | 'imageUrl' | 'birthday'>) => {
-        await knex('User').where({ id: update.id }).update(update)
-        return db.User.findById(update.id)
+      findDoctorsForPatientId: async (patientId: number) => {
+        return await knex('DoctorPatientRelationship')
+          .join('User', 'DoctorPatientRelationship.doctorId', 'User.id')
+          .where({ patientId })
       },
 
+      createDoctorPatientAssociation: async (doctorId: number, patientId: number) => {
+        await knex('DoctorPatientRelationship').insert({ doctorId, patientId })
+        return true
+      },
+
+      destroyDoctorPatientAssociation: async (doctorId: number, patientId: number) => {
+        await knex('DoctorPatientRelationship').where({ doctorId, patientId }).delete()
+        return true
+      },
     },
 
     Questionnaire: {
@@ -249,6 +270,7 @@ function Db(knex: Knex) {
       // a live DB will result in epic disaster.
       clearDb: async () => {
         for (let table of [
+          'DoctorPatientRelationship',
           'TimelineGroupNesting', 'TimelineItem', 'TimelineGroup',
           'QuestionRelation',
           'QuestionResponseBoolean', 'QuestionResponseText', 'QuestionResponseChoice',
