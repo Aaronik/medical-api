@@ -196,6 +196,33 @@ function Db(knex: Knex) {
         return questions
       },
 
+    },
+
+    Timeline: {
+
+      itemsByUserId: async (userId: number) => {
+        return knex('TimelineItem').where({ userId })
+      },
+
+      groups: async () => {
+        const groups = await knex<{}, T.TimelineGroup[]>('TimelineGroup').select()
+        return Promise.all(groups.map(async group => {
+          group.nestedGroups = await knex('TimelineGroupNesting').where({ groupId: group.id })
+          return group
+        }))
+      },
+
+      createItem: async (item: T.TimelineItem) => {
+        item.start = new Date(item.start)
+        item.end = item.end && new Date(item.start)
+
+        const [id] = await knex('TimelineItem').insert(item)
+        return knex('TimelineItem').where({ id }).first()
+      },
+
+      createGroup: async (group: T.TimelineGroup) => {
+        return knex('TimelineItem').insert(group)
+      },
 
     },
 
@@ -204,9 +231,12 @@ function Db(knex: Knex) {
       // a live DB will result in epic disaster.
       clearDb: async () => {
         for (let table of [
-          'QuestionRelation', 'QuestionResponseBoolean',
-          'QuestionResponseText', 'QuestionResponseChoice', 'QuestionOption',
-          'Question', 'Questionnaire', 'UserToken', 'UserHealth', 'UserLogin', 'User',
+          'TimelineGroupNesting', 'TimelineItem', 'TimelineGroup',
+          'QuestionRelation',
+          'QuestionResponseBoolean', 'QuestionResponseText', 'QuestionResponseChoice',
+          'QuestionOption', 'Question',
+          'Questionnaire',
+          'UserToken', 'UserHealth', 'UserLogin', 'User',
         ]) {
           await knex.raw(`DELETE FROM ${table}`)
         }

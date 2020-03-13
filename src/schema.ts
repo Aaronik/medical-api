@@ -23,6 +23,9 @@ export default gql`
     authenticate(email:String, password:String): String
     deauthenticate: Boolean
 
+    createTimelineItem(item: TimelineItemInput!): TimelineItem
+    createTimelineGroup(group: TimelineGroupInput!): TimelineGroup
+
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
     deleteQuestionnaire(id: Int!): Boolean
     addQuestions(questions: [QuestionInput]): [Question]
@@ -37,11 +40,11 @@ export default gql`
   ### Timeline
 
   type TimelineItem {
+    id: Int
     className: String
     content: String
     end: String
     group: Int
-    id: Int
     start: String
     style: String
     subgroup: Int
@@ -52,9 +55,9 @@ export default gql`
   }
 
   type TimelineGroup {
+    id: Int
     className: String
     content: String
-    id: Int
     style: String
     order: Int
     subgroupOrder: String
@@ -69,6 +72,32 @@ export default gql`
     point,
     range,
     background
+  }
+
+  input TimelineItemInput {
+    className: String
+    content: String
+    end: String
+    group: Int
+    start: String
+    style: String
+    subgroup: Int
+    title: String
+    type: TimelineItemType
+    editable: Boolean
+    selectable: Boolean
+  }
+
+  input TimelineGroupInput {
+    className: String
+    content: String
+    style: String
+    order: Int
+    subgroupOrder: String
+    title: String
+    visible: Boolean
+    nestedGroups: [Int]
+    showNested: Boolean
   }
 
   ### User

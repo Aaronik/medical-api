@@ -102,3 +102,32 @@ export type DBQuestionResponseChoice = {
   userId: number
   optionId: number
 }
+
+export type TimelineItem = {
+  className?: string;
+  content: string;
+  end?: string | Date;
+  group?: number;
+  id: number;
+  start: string | Date;
+  style?: string;
+  subgroup?: number;
+  title?: string;
+  type?: TimelineItemType;
+  editable?: boolean;
+  selectable?: boolean;
+}
+
+export type TimelineGroup = {
+  className?: string;
+  content: string | HTMLElement;
+  id: number;
+  style?: string;
+  order?: number;
+  title?: string;
+  visible?: boolean;
+  nestedGroups?: number[];
+  showNested?: boolean;
+}
+
+export type TimelineItemType = 'box' | 'point' | 'range' | 'background';

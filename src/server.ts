@@ -53,7 +53,12 @@ export default function Server(knex: Knex) {
         question: async (parent, args, context, info) => {
           const { id } = enforceArgs(args, 'id')
           return db.Question.findById(id, context.user?.id)
-        }
+        },
+
+        timelineItems: async (parent, args, context, info) => {
+          const { userId } = enforceArgs(args, 'userId')
+          return db.Timeline.itemsByUserId(userId)
+        },
 
       },
 
@@ -89,6 +94,19 @@ export default function Server(knex: Knex) {
 
         deauthenticate: async (parent, args, context, info) => {
           return db.Auth.deauthenticate(context.token)
+        },
+
+        createTimelineItem: async (parent, args, context, info) => {
+          enforceRoles(context.user)
+          const { item } = enforceArgs(args, 'item')
+          item.userId = context.user?.id
+          return db.Timeline.createItem(item)
+        },
+
+        createTimelineGroup: async (parent, args, context, info) => {
+          enforceRoles(context.user)
+          const { group } = enforceArgs(args, 'item')
+          return db.Timeline.createGroup(group)
         },
 
         createQuestionnaire: async (parent, args, context, info) => {
@@ -129,11 +147,13 @@ export default function Server(knex: Knex) {
           enforceRoles(context.user)
           return db.Questionnaire.submitBooleanQuestionResponse(context.user.id, questionId, value)
         },
+
         submitTextQuestionResponse: async (parent, args, context, info) => {
           const { questionId, value } = enforceArgs(args, 'questionId', 'value')
           enforceRoles(context.user)
           return db.Questionnaire.submitTextQuestionResponse(context.user.id, questionId, value)
         },
+
         submitChoiceQuestionResponse: async (parent, args, context, info) => {
           const { questionId, value } = enforceArgs(args, 'questionId', 'value')
           enforceRoles(context.user)
