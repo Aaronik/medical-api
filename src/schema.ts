@@ -124,6 +124,8 @@ export default gql`
     adherence: Int
     imageUrl: String
     birthday: Int
+    patients: [User]
+    doctors: [User]
   }
 
   enum Role {

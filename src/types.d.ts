@@ -9,6 +9,8 @@ export type User = {
   imageUrl?: string
   birthday?: number
   adherence?: number
+  patients?: User[]
+  doctors?: User[]
 }
 
 type Role = 'ADMIN' |'DOCTOR' |'PATIENT'

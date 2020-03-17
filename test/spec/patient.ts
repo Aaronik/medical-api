@@ -31,6 +31,19 @@ const UNASSIGN_PATIENT_FROM_DOCTOR = gql`
   }
 `
 
+const USER = gql`
+  query User($id: Int!) {
+    user(id: $id) {
+      patients{
+        id
+      }
+      doctors{
+        id
+      }
+    }
+  }
+`
+
 const ME = gql`
   query {
     me {
@@ -51,12 +64,21 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.equal(assignErrors, undefined)
 
     {
-      // testing creation
+      // Testing creation
       const { data: { patients }} = await query(server).asDoctor({ query: PATIENTS })
       t.equal(patients[0].id, patientId)
 
       const { data: { doctors }} = await query(server).asPatient({ query: DOCTORS })
       t.equal(doctors[0].id, doctorId)
+    }
+
+    {
+      // Testing fetching patients/doctors on user
+      const { data: { user: { patients }}} = await query(server).asAdmin({ query: USER, variables: { id: doctorId }})
+      t.deepEqual(patients, [{ id: patientId }])
+
+      const { data: { user: { doctors }}} = await query(server).asAdmin({ query: USER, variables: { id: patientId }})
+      t.deepEqual(doctors, [{ id: doctorId }])
     }
 
     // destroy

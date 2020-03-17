@@ -46,22 +46,34 @@ function Db(knex: Knex) {
         return db.User.findById(update.id)
       },
 
+      _findOne: async (where: any) => {
+        const user = await userTables(knex).first().where(where)
+        if (!user) return null
+        user.patients = await db.User.findPatientsByDoctorId(user.id)
+        user.doctors = await db.User.findDoctorsForPatientId(user.id)
+        return user
+      },
+
       findById: async (id: number) => {
-        return await userTables(knex).first().where({ id })
+        return await db.User._findOne({ id })
       },
 
       findByEmail: async (email: string) => {
-        return await userTables(knex).first().where({ email })
+        return await db.User._findOne({ email })
+      },
+
+      findAll: async () => {
+        // TODO Need to do some clever joining to quicken this up, this is not scalable
+        const userIds = await userTables(knex).select('id')
+        return await Promise.all(userIds.map(id => {
+          return db.User._findOne({ id })
+        }))
       },
 
       findByAuthToken: async (token: string): Promise<T.User | false> => {
         const userTokenInfo = await knex('UserToken').where({ token }).first()
         if (!userTokenInfo) return false
         return db.User.findById(userTokenInfo.userId)
-      },
-
-      findAll: async () => {
-        return userTables(knex).select()
       },
 
       findPatientsByDoctorId: async (doctorId: number) => {
