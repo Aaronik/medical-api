@@ -31,6 +31,8 @@ const ME = gql`
       email
       name
       role
+      lastVisit
+      joinDate
     }
   }
 `
@@ -180,6 +182,15 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.end()
   })
 
+  test('GQL Create User -> User has activity -> User lastVisit updates', async t => {
+    await db._util.clearDb()
+
+    await query(server).asDoctor({ query: GET_USERS })
+    const { data: { me }} = await query(server).asDoctor({ query: ME })
+
+    t.notEqual(me.joinDate, me.lastVisit)
+
+    t.end()
+  })
+
 }
-
-

@@ -85,6 +85,12 @@ function Db(knex: Knex) {
         await knex('DoctorPatientRelationship').where({ doctorId, patientId }).delete()
         return true
       },
+
+      recordVisit: async (userId: number) => {
+        const now = (new Date()).valueOf()
+        return knex.raw('UPDATE UserLogin SET lastVisit = NOW() WHERE userId = ?', [userId])
+      },
+
     },
 
     Questionnaire: {

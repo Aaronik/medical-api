@@ -19,7 +19,16 @@ export default function Server(knex: Knex) {
     context: async (ctx) => {
       const token = ctx.req.headers?.authorization
       if (!token) return {}
+
       const user = await db.User.findByAuthToken(token)
+
+      if (user) {
+        await db.User.recordVisit(user.id)
+        // Use JS to assign lastVisit instead of hitting DB again (must be performant as this is on every request)
+        // One caveat here is that MySQL logs time in seconds, JS is in milliseconds. So the timestamp of your current
+        // session will always be more precise than the timestamp of an admin seeing your last visit.
+        user.lastVisit = (new Date()).valueOf()
+      }
 
       return { user, token }
     },
