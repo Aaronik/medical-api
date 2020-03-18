@@ -65,7 +65,7 @@ function Db(knex: Knex) {
       findAll: async () => {
         // TODO Need to do some clever joining to quicken this up, this is not scalable
         const userIds = await userTables(knex).select('id')
-        return await Promise.all(userIds.map(id => {
+        return Promise.all(userIds.map(async ({ id }) => {
           return db.User._findOne({ id })
         }))
       },
