@@ -193,6 +193,12 @@ function Db(knex: Knex) {
         }))
       },
 
+      update: async (question: T.Question) => {
+        if (!question.id) throw new Error('Must supply at minimum an id to update a question.')
+        await knex('Question').where({ id: question.id }).update(question)
+        return db.Question.findById(question.id)
+      },
+
       delete: async (id: number) => {
         return knex('Question').where({ id }).delete()
       },

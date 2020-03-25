@@ -10,6 +10,7 @@ const QUESTIONS_FRAGMENT = gql`
       id
       type
       boolResp: response
+      text
       next {
         includes
         equals
@@ -20,6 +21,7 @@ const QUESTIONS_FRAGMENT = gql`
       id
       type
       textResp: response
+      text
       next {
         includes
         equals
@@ -30,6 +32,7 @@ const QUESTIONS_FRAGMENT = gql`
       id
       type
       singleChoiceResp: response
+      text
       options {
         value
         text
@@ -44,6 +47,7 @@ const QUESTIONS_FRAGMENT = gql`
       id
       type
       multipleChoiceResp: response
+      text
       options {
         value
         text
@@ -96,6 +100,12 @@ const CREATE_QUESTIONNAIRE = gql`
 const ADD_QUESTION = gql`
   mutation AddQuestions($questions: [QuestionInput]) {
     addQuestions(questions: $questions) ${QUESTIONS_FRAGMENT}
+  }
+`
+
+export const UPDATE_QUESTION = gql`
+  mutation UpdateQuestion($question: QuestionInput!) {
+    updateQuestion(question: $question) ${QUESTIONS_FRAGMENT}
   }
 `
 
@@ -356,6 +366,31 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.deepEqual(gottenQuestionnaireErrors, undefined)
 
     t.equal(gottenQuestionnaire.questions.length, questions.length - 1, 'There should be one fewer question after a question has been deleted')
+
+    t.end()
+  })
+
+  test('GQL Submit Questionnaire -> Update question', async t => {
+    const { data: { createQuestionnaire: createdQuestionnaire }, errors: createQuestionnaireErrors }
+      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+
+    t.deepEqual(createQuestionnaireErrors, undefined)
+
+    const newText = 'Updated text'
+    const updatedQuestion = Object.assign({}, createdQuestionnaire.questions[0], { text: newText })
+    delete updatedQuestion.boolResp
+    delete updatedQuestion.next
+
+    const { errors: updateQuestionErrors } = await mutate(server).asAdmin({ mutation: UPDATE_QUESTION, variables: { question: updatedQuestion } })
+
+    t.deepEqual(updateQuestionErrors, undefined)
+
+    const { data: { questionnaire: gottenQuestionnaire }, errors: gottenQuestionnaireErrors }
+      = await query(server).asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
+
+    t.deepEqual(gottenQuestionnaireErrors, undefined)
+
+    t.equal(gottenQuestionnaire.questions[0].text, newText)
 
     t.end()
   })

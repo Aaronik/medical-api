@@ -36,7 +36,9 @@ export default gql`
 
     createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
     deleteQuestionnaire(id: Int!): Boolean
+
     addQuestions(questions: [QuestionInput]): [Question]
+    updateQuestion(question: QuestionInput!): Question
     deleteQuestion(id: Int!): Boolean
     createQuestionRelations(relations: [QuestionRelationInput]): Boolean
 
@@ -221,10 +223,11 @@ export default gql`
   }
 
   input QuestionInput {
+    "Only required when updating a question"
+    id: Int
     text: String!
     type: QuestionType!
     options: [QuestionOptionInput]
-
     "Only required when creating a question for an already existing questionnaire"
     questionnaireId: Int
   }
