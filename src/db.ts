@@ -150,21 +150,37 @@ function Db(knex: Knex) {
       },
 
       submitBooleanQuestionResponse: async (userId: string, questionId: string, value: boolean) => {
-        await knex('QuestionResponseBoolean').insert({ userId, questionId, value })
-        return true
+        try {
+          await knex('QuestionResponseBoolean').insert({ userId, questionId, value })
+          return true
+        } catch (e) {
+          await knex('QuestionResponseBoolean').where({ userId, questionId }).update({ value })
+          return true
+        }
       },
 
       submitTextQuestionResponse: async (userId: string, questionId: string, value: string) => {
-        await knex('QuestionResponseText').insert({ userId, questionId, value })
-        return true
+        try {
+          await knex('QuestionResponseText').insert({ userId, questionId, value })
+          return true
+        } catch (e) {
+          await knex('QuestionResponseText').where({ userId, questionId }).update({ value })
+          return true
+        }
       },
 
       submitChoiceQuestionResponse: async (userId: string, questionId: string, value: string) => {
         const option = await knex<{}, T.QuestionOption>('QuestionOption').select('id').where({ questionId, value }).first()
         if (!option) throw new Error('Could not find specified option')
         const optionId = option.id
-        await knex('QuestionResponseChoice').insert({ userId, questionId, optionId })
-        return true
+
+        try {
+          await knex('QuestionResponseChoice').insert({ userId, questionId, optionId })
+          return true
+        } catch(e) {
+          await knex('QuestionResponseChoice').where({ userId, questionId }).update({ optionId })
+          return true
+        }
       },
 
     },

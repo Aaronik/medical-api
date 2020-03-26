@@ -234,18 +234,28 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     const singleChoiceResponse = singleChoiceQuestion?.options?.[0]?.value
     const multipleChoiceResponse = multipleChoiceQuestion?.options?.[0]?.value
 
-    const boolResp = await mutate(server).asPatient({ mutation: SUBMIT_BOOLEAN_RESPONSE, variables: { questionId: booleanQuestion.id, value: true }})
-    const textResp = await mutate(server).asPatient({ mutation: SUBMIT_TEXT_RESPONSE, variables: { questionId: textQuestion.id, value: 'text answer' }})
-    const singResp = await mutate(server).asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: singleChoiceQuestion.id, value: singleChoiceResponse }})
-    const multResp = await mutate(server).asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: multipleChoiceQuestion.id, value: multipleChoiceResponse }})
-    const getResp = await query(server).asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
+    const submitWithNoErrors = async () => {
+      const boolResp = await mutate(server).asPatient({ mutation: SUBMIT_BOOLEAN_RESPONSE, variables: { questionId: booleanQuestion.id, value: true }})
+      const textResp = await mutate(server).asPatient({ mutation: SUBMIT_TEXT_RESPONSE, variables: { questionId: textQuestion.id, value: 'text answer' }})
+      const singResp = await mutate(server).asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: singleChoiceQuestion.id, value: singleChoiceResponse }})
+      const multResp
+        = await mutate(server).asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: multipleChoiceQuestion.id, value: multipleChoiceResponse }})
+      const getResp = await query(server).asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
 
-    // Make sure no gql errors
-    t.deepEqual(
-      [boolResp.errors, textResp.errors, singResp.errors, multResp.errors, getResp.errors],
-      [undefined, undefined, undefined, undefined, undefined],
-      'Received unexpected GQL error'
-    )
+      // Make sure no gql errors
+      t.deepEqual(
+        [boolResp.errors, textResp.errors, singResp.errors, multResp.errors, getResp.errors],
+        [undefined, undefined, undefined, undefined, undefined],
+        'Received unexpected GQL error'
+      )
+
+      return { boolResp, textResp, singResp, multResp, getResp }
+    }
+
+    const { boolResp, textResp, singResp, multResp, getResp } = await submitWithNoErrors()
+
+    // Ensure responses can be updated
+    submitWithNoErrors()
 
     const gottenQuestionnaire = getResp.data?.questionnaire
 
