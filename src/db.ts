@@ -174,13 +174,26 @@ function Db(knex: Knex) {
         if (!option) throw new Error('Could not find specified option')
         const optionId = option.id
 
-        try {
-          await knex('QuestionResponseChoice').insert({ userId, questionId, optionId })
-          return true
-        } catch(e) {
-          await knex('QuestionResponseChoice').where({ userId, questionId }).update({ optionId })
-          return true
-        }
+        // we remove all the existing responses for this question
+        await knex('QuestionResponseChoice').where({ userId, questionId }).delete()
+
+        await knex('QuestionResponseChoice').insert({ userId, questionId, optionId })
+        return true
+      },
+
+      submitChoiceQuestionResponses: async (userId: string, questionId: string, values: string[]) => {
+        const questionMarks = values.map(v => '?').join(',')
+        const rawResp = await knex.raw(`SELECT * FROM QuestionOption WHERE questionId = ? AND value IN (${questionMarks})`, [questionId, ...values])
+        const options = rawResp[0]
+
+        if (options.length !== values.length) throw new Error('Could not find all specified options')
+
+        // we remove all the existing responses for this question
+        await knex('QuestionResponseChoice').where({ userId, questionId }).delete()
+
+        const rows = options.map(option => ({ userId, questionId, optionId: option.id }))
+        await knex.batchInsert('QuestionResponseChoice', rows, 30)
+        return true
       },
 
     },
@@ -239,7 +252,8 @@ function Db(knex: Knex) {
 
           if (q.type === 'BOOLEAN') {
             const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>('QuestionResponseBoolean').where({ questionId, userId }).first()
-            q.response = !!booleanResponse?.value // MySQL stores bool as binary
+            if (booleanResponse !== undefined && booleanResponse !== null) // ensure we don't accidentally make no response a false response
+              q.response = !!booleanResponse?.value // MySQL stores bool as binary
           } else if (q.type === 'TEXT') {
             const textResponse = await knex<{}, T.DBQuestionResponseText>('QuestionResponseText').where({ questionId, userId }).first()
             q.response = textResponse?.value

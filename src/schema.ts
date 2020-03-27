@@ -45,6 +45,7 @@ export default gql`
     submitBooleanQuestionResponse(questionId: Int!, value: Boolean!): Boolean
     submitTextQuestionResponse(questionId: Int!, value: String!): Boolean
     submitChoiceQuestionResponse(questionId: Int!, value: String!): Boolean
+    submitChoiceQuestionResponses(questionId: Int!, values: [String]!): Boolean
   }
 
   ### Timeline

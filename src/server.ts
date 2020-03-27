@@ -224,6 +224,12 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.submitChoiceQuestionResponse(context.user.id, questionId, value)
         },
 
+        submitChoiceQuestionResponses: async (parent, args, context, info) => {
+          const { questionId, values } = enforceArgs(args, 'questionId', 'values')
+          enforceRoles(context.user)
+          return db.Questionnaire.submitChoiceQuestionResponses(context.user.id, questionId, values)
+        },
+
       },
 
       QuestionMeta: {
