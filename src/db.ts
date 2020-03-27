@@ -183,7 +183,9 @@ function Db(knex: Knex) {
 
       submitChoiceQuestionResponses: async (userId: string, questionId: string, values: string[]) => {
         const questionMarks = values.map(v => '?').join(',')
-        const rawResp = await knex.raw(`SELECT * FROM QuestionOption WHERE questionId = ? AND value IN (${questionMarks})`, [questionId, ...values])
+        const rawResp = values.length
+          ? await knex.raw(`SELECT * FROM QuestionOption WHERE questionId = ? AND value IN (${questionMarks})`, [questionId, ...values])
+          : [[]]
         const options = rawResp[0]
 
         if (options.length !== values.length) throw new Error('Could not find all specified options')
