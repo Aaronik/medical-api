@@ -9,22 +9,54 @@ import uuid from 'uuid/v4'
  *
  * Each invocation will attempt to reuse that user's creds. So say if you create a <thing> with the Patient user,
  * then try to retrieve all of the patient user's <thing>s, you should get them.
+ *
+ * You can prefix your calls with noError() and this'll ensure your requests return no GQL errors.
+ * It checks before you destructure your return data, so you don't need an ex. data?.me?.user?.id or whatever.
+ *
+ * Ex.
+ *
+ * await mutate(server).asDoctor({ mutation: UPDATE_ME, variables: { whatevs: yeah } })
+ *
+ * or
+ *
+ * const { data: { me: { id }}} = await query(server).noError().asDoctor({ query: ME, variables: { thinktheres: novarsforthisone } })
 */
-export const mutate = (server: ApolloServer) => ({
-  asUnprived: async (queryOptions: Mutation) => runGqlAs(queryOptions, server),
-  asPatient: async (queryOptions: Mutation) => runGqlAs(queryOptions, server, 'PATIENT'),
-  asDoctor: async (queryOptions: Mutation) => runGqlAs(queryOptions, server, 'DOCTOR'),
-  asAdmin: async (queryOptions: Mutation) => runGqlAs(queryOptions, server, 'ADMIN'),
-})
 
-export const query = (server: ApolloServer) => ({
-  asUnprived: async (queryOptions: Query) => runGqlAs(queryOptions, server),
-  asPatient: async (queryOptions: Query) => runGqlAs(queryOptions, server, 'PATIENT'),
-  asDoctor: async (queryOptions: Query) => runGqlAs(queryOptions, server, 'DOCTOR'),
-  asAdmin: async (queryOptions: Query) => runGqlAs(queryOptions, server, 'ADMIN'),
-})
+export const mutate = (server: ApolloServer) => {
+  let shouldCheckErrors = false
 
-const runGqlAs = async (queryOptions: Mutation | Query, server: ApolloServer, role?: Role) => {
+  const returnObj = {
+    asUnprived: async (queryOptions: Mutation) => runGqlAs(shouldCheckErrors, queryOptions, server),
+    asPatient: async (queryOptions: Mutation) => runGqlAs(shouldCheckErrors, queryOptions, server, 'PATIENT'),
+    asDoctor: async (queryOptions: Mutation) => runGqlAs(shouldCheckErrors, queryOptions, server, 'DOCTOR'),
+    asAdmin: async (queryOptions: Mutation) => runGqlAs(shouldCheckErrors, queryOptions, server, 'ADMIN'),
+    noError: () => {
+      shouldCheckErrors = true
+      return returnObj
+    }
+  }
+
+  return returnObj
+}
+
+export const query = (server: ApolloServer) => {
+  let shouldCheckErrors = false
+
+  const returnObj = {
+    asUnprived: async (queryOptions: Query) => runGqlAs(shouldCheckErrors, queryOptions, server),
+    asPatient: async (queryOptions: Query) => runGqlAs(shouldCheckErrors, queryOptions, server, 'PATIENT'),
+    asDoctor: async (queryOptions: Query) => runGqlAs(shouldCheckErrors, queryOptions, server, 'DOCTOR'),
+    asAdmin: async (queryOptions: Query) => runGqlAs(shouldCheckErrors, queryOptions, server, 'ADMIN'),
+    noError: () => {
+      shouldCheckErrors = true
+      return returnObj
+    }
+  }
+
+  return returnObj
+}
+
+const runGqlAs = async (shouldCheckErrors: boolean, queryOptions: Mutation | Query, server: ApolloServer, role?: Role) => {
   const { mutate, query } = createTestClient(server)
 
   if (!role) {
@@ -52,7 +84,7 @@ const runGqlAs = async (queryOptions: Mutation | Query, server: ApolloServer, ro
 
   // If we still don't have a token it's because something is wrong somewhere down the line.
   if (!token) throw new Error(
-    `Whoops, Milli custom mutate did not receive a token on sign in. Sorry
+    `QueryMutate: Milli custom mutate did not receive a token on sign in. Sorry
     for this being an error, but I don't have access to the test object from in here!`
   )
 
@@ -62,8 +94,22 @@ const runGqlAs = async (queryOptions: Mutation | Query, server: ApolloServer, ro
   // Because mutate and query can't send headers. See function definition.
   const privilegedClient = createTestClient(server, { authorization: token })
 
-  if (queryOptions.mutation) return privilegedClient.mutate(queryOptions as Mutation)
-  else                       return privilegedClient.query(queryOptions as Query)
+  if (queryOptions.mutation) {
+    const result = await privilegedClient.mutate(queryOptions as Mutation)
+    if (!shouldCheckErrors) return result
+    if (result.errors !== undefined) throw new Error(
+      'QueryMutate: noError was specified, but error(s) were returned: ' + JSON.stringify(result.errors)
+    )
+    return result
+  } else {
+    const result = await privilegedClient.query(queryOptions as Query)
+    if (!shouldCheckErrors) return result
+    if (result.errors !== undefined) throw new Error(
+      'QueryMutate: noError was specified, but error(s) were returned: ' + JSON.stringify(result.errors)
+    )
+    return result
+  }
+
 }
 
 type Mutation = Parameters<ReturnType<typeof createTestClient>['mutate']>['0']

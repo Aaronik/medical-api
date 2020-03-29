@@ -88,12 +88,9 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
       start: new Date().toString(),
     }
 
-    const { data: { me: { id: meId }}} = await query(server).asPatient({ query: ME })
-
-    const { data: { createTimelineItem: { id }}, errors } = await mutate(server).asPatient({ mutation: CREATE_ITEM, variables: { item } })
-    t.deepEqual(errors, undefined)
-
-    const { data: { timelineItems: items }} = await query(server).asPatient({ query: GET_ITEMS, variables: { userId: meId }})
+    const { data: { me: { id: meId }}} = await query(server).noError().asPatient({ query: ME })
+    const { data: { createTimelineItem: { id }}} = await mutate(server).noError().asPatient({ mutation: CREATE_ITEM, variables: { item } })
+    const { data: { timelineItems: items }} = await query(server).noError().asPatient({ query: GET_ITEMS, variables: { userId: meId }})
 
     t.equal(items.length, 1)
     t.equal(items[0].content, item.content)
@@ -109,17 +106,12 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
       start: new Date().toString(),
     }
 
-    const { data: { createTimelineItem: { id }}, errors } = await mutate(server).asPatient({ mutation: CREATE_ITEM, variables: { item } })
-    t.deepEqual(errors, undefined)
-
+    const { data: { createTimelineItem: { id }}} = await mutate(server).noError().asPatient({ mutation: CREATE_ITEM, variables: { item } })
     const updatedItem = Object.assign({}, item, { title: 'Update title', id })
+    await mutate(server).noError().asPatient({ mutation: UPDATE_ITEM, variables: { item: updatedItem }})
+    const { data: { timelineItem: gottenItem }} = await query(server).noError().asPatient({ query: GET_ITEM, variables: { id }})
 
-    const { errors: updateErrors } = await mutate(server).asPatient({ mutation: UPDATE_ITEM, variables: { item: updatedItem }})
-    t.deepEqual(updateErrors, undefined)
-
-    const { data: { timelineItem: gottenItem }} = await query(server).asPatient({ query: GET_ITEM, variables: { id }})
     t.ok(gottenItem)
-
     t.equal(gottenItem.content, item.content)
     t.equal(gottenItem.title, updatedItem.title)
 
@@ -137,24 +129,20 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
       content: 'group2'
     }
 
-    const { data: { createTimelineGroup: { id: id1 }}, errors: errors1 } = await mutate(server).asPatient({ mutation: CREATE_GROUP, variables: { group: group1 } })
-    const { data: { createTimelineGroup: { id: id2 }}, errors: errors2 } = await mutate(server).asPatient({ mutation: CREATE_GROUP, variables: { group: group2 } })
-    t.deepEqual(errors1, undefined)
-    t.deepEqual(errors2, undefined)
+    const { data: { createTimelineGroup: { id: id1 }}} = await mutate(server).noError().asPatient({ mutation: CREATE_GROUP, variables: { group: group1 } })
+    const { data: { createTimelineGroup: { id: id2 }}} = await mutate(server).noError().asPatient({ mutation: CREATE_GROUP, variables: { group: group2 } })
+
     t.ok(id1)
     t.ok(id2)
 
     const groupUpdate = Object.assign({}, group2, { title: 'update title', id: id2 })
 
-    const { errors: updateErrors } = await mutate(server).asPatient({ mutation: UPDATE_GROUP, variables: { group: groupUpdate }})
-    t.deepEqual(updateErrors, undefined)
+    await mutate(server).noError().asPatient({ mutation: UPDATE_GROUP, variables: { group: groupUpdate }})
 
-    const { data: { timelineGroups: groups }, errors: getErrors } = await mutate(server).asPatient({ mutation: GET_GROUPS })
-    t.deepEqual(getErrors, undefined)
-    t.equal(groups.length, 2)
-
+    const { data: { timelineGroups: groups }} = await mutate(server).noError().asPatient({ mutation: GET_GROUPS })
     const updatedGroup = groups.find(g => g.title === groupUpdate.title)
 
+    t.equal(groups.length, 2)
     t.ok(updatedGroup)
 
     t.end()

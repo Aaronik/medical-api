@@ -130,15 +130,17 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     const password = 'testPass'
     const name = 'Lumpy Space Princess'
 
-    const resp1 = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email: email1, password, role: 'ADMIN', name }})
-    const resp2 = await mutate(server).asUnprived({ mutation: CREATE_USER, variables: { email: email2, password, role: 'ADMIN', name }})
+    const { data: { createUser: { email: email1Resp }}} = await mutate(server).noError()
+      .asUnprived({ mutation: CREATE_USER, variables: { email: email1, password, role: 'ADMIN', name }})
+    const { data: { createUser: { email: email2Resp }}} = await mutate(server).noError()
+      .asUnprived({ mutation: CREATE_USER, variables: { email: email2, password, role: 'ADMIN', name }})
 
-    t.equal(resp1.data?.createUser?.email, email1)
-    t.equal(resp2.data?.createUser?.email, email2)
+    t.equal(email1Resp, email1)
+    t.equal(email2Resp, email2)
 
-    const { data } = await query(server).asUnprived({ query: GET_USERS })
+    const { data: { users }} = await query(server).noError().asUnprived({ query: GET_USERS })
 
-    t.deepEqual(data?.users, [{ email: email1 }, { email: email2 }])
+    t.deepEqual(users, [{ email: email1 }, { email: email2 }])
 
     t.end()
   })
@@ -167,11 +169,9 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     // The trick here is I'm doing as an admin a change to doctor, so we should see the role be doc, which
     // means the update went through.
-    const { data, errors } = await mutate(server).asAdmin({ mutation: UPDATE_ME, variables: { user: {
+    const { data } = await mutate(server).noError().asAdmin({ mutation: UPDATE_ME, variables: { user: {
       role: 'DOCTOR'
     }}})
-
-    t.deepEqual(errors, undefined)
 
     t.equal(data?.updateMe?.role, 'DOCTOR')
 

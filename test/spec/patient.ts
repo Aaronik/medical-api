@@ -60,8 +60,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     // setup
     const { data: { me: { id: doctorId }}} = await query(server).asDoctor({ query: ME })
     const { data: { me: { id: patientId }}} = await query(server).asPatient({ query: ME })
-    const { errors: assignErrors } = await mutate(server).asDoctor({ mutation: ASSIGN_PATIENT_TO_DOCTOR, variables: { patientId, doctorId }})
-    t.equal(assignErrors, undefined)
+    await mutate(server).noError().asDoctor({ mutation: ASSIGN_PATIENT_TO_DOCTOR, variables: { patientId, doctorId }})
 
     {
       // Testing creation
@@ -82,8 +81,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     }
 
     // destroy
-    const { errors: destroyErrors } = await mutate(server).asDoctor({ mutation: UNASSIGN_PATIENT_FROM_DOCTOR, variables: { patientId, doctorId }})
-    t.equal(destroyErrors, undefined)
+    await mutate(server).noError().asDoctor({ mutation: UNASSIGN_PATIENT_FROM_DOCTOR, variables: { patientId, doctorId }})
 
     {
       // Testing destroy

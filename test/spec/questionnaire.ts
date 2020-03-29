@@ -170,20 +170,17 @@ const questions: Omit<Omit<Question, 'id'>, 'questionnaireId'>[] = [
 
 export const test: TestModuleExport = (test, query, mutate, knex, db, server) => {
   test('GQL Add Questionnaire -> Get Questionnaire', async t => {
-    const { data, errors } = await mutate(server).asUnprived({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+    const { data: { createQuestionnaire: questionnaire }} = await mutate(server).noError()
+      .asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
-    t.deepEqual(errors, undefined, 'Received unexpected GQL error')
+    t.equal(questionnaire.title, title)
+    t.equal(questionnaire.questions.length, questions.length)
 
-    const questionnaire = data?.createQuestionnaire as Questionnaire
+    const singleChoiceQuestion = questionnaire.questions.find(q => q.type === 'SINGLE_CHOICE')
+    const multipleChoiceQuestion = questionnaire.questions.find(q => q.type === 'MULTIPLE_CHOICE')
 
-    t.equal(questionnaire?.title, title)
-    t.equal(questionnaire?.questions?.length, questions.length)
-
-    const singleChoiceQuestion = questionnaire?.questions?.find(q => q.type === 'SINGLE_CHOICE')
-    const multipleChoiceQuestion = questionnaire?.questions?.find(q => q.type === 'MULTIPLE_CHOICE')
-
-    t.deepEqual(singleChoiceQuestion?.options, [{ value: 'val', text: 'text' }])
-    t.deepEqual(multipleChoiceQuestion?.options, [{ value: 'val', text: 'text' }])
+    t.deepEqual(singleChoiceQuestion.options, [{ value: 'val', text: 'text' }])
+    t.deepEqual(multipleChoiceQuestion.options, [{ value: 'val', text: 'text' }])
 
     t.end()
   })
@@ -208,23 +205,16 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   test('GQL Get Questionnaire that doesn\'t exist', async t => {
     await db._util.clearDb()
 
-    const { data, errors } = await mutate(server).asUnprived({ mutation: GET_QUESTIONNAIRE, variables: { id: 42 } })
-    const questionnaire = data?.createQuestionnaire
-
-    t.deepEqual(errors, undefined, 'Received unexpected GQL error')
+    const { data: { createQuestionnaire: questionnaire } } = await mutate(server).noError().asUnprived({ mutation: GET_QUESTIONNAIRE, variables: { id: 42 } })
     t.equal(questionnaire, undefined)
-
     t.end()
   })
 
   test('GQL Submit Responses to Questionnaire -> Retrieve Questionnaire with responses', async t => {
     await db._util.clearDb()
 
-    const createResp = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
-
-    t.deepEqual(createResp.errors, undefined, 'Received unexpected GQL error')
-
-    const createdQuestionnaire = createResp.data?.createQuestionnaire
+    const { data: { createQuestionnaire: createdQuestionnaire }} =
+      await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
     const singleChoiceQuestion = createdQuestionnaire?.questions?.find(q => q.type === 'SINGLE_CHOICE')
     const multipleChoiceQuestion = createdQuestionnaire?.questions?.find(q => q.type === 'MULTIPLE_CHOICE')
@@ -235,19 +225,16 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     const multipleChoiceResponse = multipleChoiceQuestion?.options?.[0]?.value
 
     const submitWithNoErrors = async () => {
-      const boolResp = await mutate(server).asPatient({ mutation: SUBMIT_BOOLEAN_RESPONSE, variables: { questionId: booleanQuestion.id, value: true }})
-      const textResp = await mutate(server).asPatient({ mutation: SUBMIT_TEXT_RESPONSE, variables: { questionId: textQuestion.id, value: 'text answer' }})
-      const singResp = await mutate(server).asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: singleChoiceQuestion.id, value: singleChoiceResponse }})
-      const multResp
-        = await mutate(server).asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: multipleChoiceQuestion.id, value: multipleChoiceResponse }})
-      const getResp = await query(server).asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
-
-      // Make sure no gql errors
-      t.deepEqual(
-        [boolResp.errors, textResp.errors, singResp.errors, multResp.errors, getResp.errors],
-        [undefined, undefined, undefined, undefined, undefined],
-        'Received unexpected GQL error'
-      )
+      const boolResp = await mutate(server).noError()
+        .asPatient({ mutation: SUBMIT_BOOLEAN_RESPONSE, variables: { questionId: booleanQuestion.id, value: true }})
+      const textResp = await mutate(server).noError()
+        .asPatient({ mutation: SUBMIT_TEXT_RESPONSE, variables: { questionId: textQuestion.id, value: 'text answer' }})
+      const singResp = await mutate(server).noError()
+        .asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: singleChoiceQuestion.id, value: singleChoiceResponse }})
+      const multResp = await mutate(server).noError()
+        .asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: multipleChoiceQuestion.id, value: multipleChoiceResponse }})
+      const getResp = await query(server).noError()
+        .asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
 
       return { boolResp, textResp, singResp, multResp, getResp }
     }
@@ -282,10 +269,8 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Submit Questionnaire -> Submit Question Relations -> Get Questionnaire', async t => {
-    const { data: { createQuestionnaire: createdQuestionnaire }, errors: createQuestionnaireErrors }
-      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
-
-    t.deepEqual(createQuestionnaireErrors, undefined)
+    const { data: { createQuestionnaire: createdQuestionnaire }}
+      = await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
     let booleanQuestion = createdQuestionnaire.questions.find(q => q.type === 'BOOLEAN')
     let textQuestion = createdQuestionnaire.questions.find(q => q.type === 'TEXT')
@@ -310,15 +295,10 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
       },
     ]
 
-    const { errors: createQuestionRelationErrors }
-      = await mutate(server).asAdmin({ mutation: CREATE_QUESTION_RELATIONS, variables: { relations }})
+    await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTION_RELATIONS, variables: { relations }})
 
-    t.deepEqual(createQuestionRelationErrors, undefined)
-
-    const { data: { questionnaire: gottenQuestionnaire }, errors: gottenQuestionnaireErrors }
-      = await query(server).asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
-
-    t.deepEqual(gottenQuestionnaireErrors, undefined)
+    const { data: { questionnaire: gottenQuestionnaire }}
+      = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
 
     booleanQuestion = gottenQuestionnaire.questions.find(q => q.type === 'BOOLEAN')
     textQuestion = gottenQuestionnaire.questions.find(q => q.type === 'TEXT')
@@ -334,10 +314,8 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Submit questionnaire -> Add another question -> Get questionnaire', async t => {
-    const { data: { createQuestionnaire: createdQuestionnaire }, errors: createQuestionnaireErrors }
-      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
-
-    t.deepEqual(createQuestionnaireErrors, undefined)
+    const { data: { createQuestionnaire: createdQuestionnaire }}
+      = await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
     const extraQuestions = [{
       questionnaireId: createdQuestionnaire.id,
@@ -346,14 +324,10 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
       options: [{ value: 'option', text: 'option' }]
     }]
 
-    const { errors: addQuestionErrors } = await mutate(server).asAdmin({ mutation: ADD_QUESTION, variables: { questions: extraQuestions }})
+    await mutate(server).noError().asAdmin({ mutation: ADD_QUESTION, variables: { questions: extraQuestions }})
 
-    t.deepEqual(addQuestionErrors, undefined)
-
-    const { data: { questionnaire: gottenQuestionnaire }, errors: gottenQuestionnaireErrors }
-      = await query(server).asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
-
-    t.deepEqual(gottenQuestionnaireErrors, undefined)
+    const { data: { questionnaire: gottenQuestionnaire }}
+      = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
 
     t.equal(gottenQuestionnaire.questions.length, questions.length + extraQuestions.length, 'Questionnaire should have all the extra questions')
 
@@ -361,19 +335,13 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Submit Questionnaire -> Delete question', async t => {
-    const { data: { createQuestionnaire: createdQuestionnaire }, errors: createQuestionnaireErrors }
-      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+    const { data: { createQuestionnaire: createdQuestionnaire }}
+      = await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
-    t.deepEqual(createQuestionnaireErrors, undefined)
+    await mutate(server).noError().asAdmin({ mutation: DELETE_QUESTION, variables: { id: createdQuestionnaire.questions[0].id } })
 
-    const { errors: deleteQuestionErrors } = await mutate(server).asAdmin({ mutation: DELETE_QUESTION, variables: { id: createdQuestionnaire.questions[0].id } })
-
-    t.deepEqual(deleteQuestionErrors, undefined)
-
-    const { data: { questionnaire: gottenQuestionnaire }, errors: gottenQuestionnaireErrors }
-      = await query(server).asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
-
-    t.deepEqual(gottenQuestionnaireErrors, undefined)
+    const { data: { questionnaire: gottenQuestionnaire }}
+      = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
 
     t.equal(gottenQuestionnaire.questions.length, questions.length - 1, 'There should be one fewer question after a question has been deleted')
 
@@ -381,24 +349,18 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   })
 
   test('GQL Submit Questionnaire -> Update question', async t => {
-    const { data: { createQuestionnaire: createdQuestionnaire }, errors: createQuestionnaireErrors }
-      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
-
-    t.deepEqual(createQuestionnaireErrors, undefined)
+    const { data: { createQuestionnaire: createdQuestionnaire }}
+      = await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
     const newText = 'Updated text'
     const updatedQuestion = Object.assign({}, createdQuestionnaire.questions[0], { text: newText })
     delete updatedQuestion.boolResp
     delete updatedQuestion.next
 
-    const { errors: updateQuestionErrors } = await mutate(server).asAdmin({ mutation: UPDATE_QUESTION, variables: { question: updatedQuestion } })
+    await mutate(server).noError().asAdmin({ mutation: UPDATE_QUESTION, variables: { question: updatedQuestion } })
 
-    t.deepEqual(updateQuestionErrors, undefined)
-
-    const { data: { questionnaire: gottenQuestionnaire }, errors: gottenQuestionnaireErrors }
-      = await query(server).asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
-
-    t.deepEqual(gottenQuestionnaireErrors, undefined)
+    const { data: { questionnaire: gottenQuestionnaire }}
+      = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
 
     t.equal(gottenQuestionnaire.questions[0].text, newText)
 
@@ -408,42 +370,21 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   test('GQL Create multiple questionnaires -> get them all', async t => {
     await db._util.clearDb()
 
-    const { errors: firstCreateQuestionnaireErrors }
-      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
-
-    t.deepEqual(firstCreateQuestionnaireErrors, undefined)
-
-    const { errors: secondCreateQuestionnaireErrors }
-      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
-
-    t.deepEqual(secondCreateQuestionnaireErrors, undefined)
-
-    const { data: { questionnaires }, errors } = await query(server).asAdmin({ query: GET_QUESTIONNAIRES })
-
-    t.deepEqual(errors, undefined)
+    await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+    await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+    const { data: { questionnaires }} = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRES })
     t.equal(questionnaires.length, 2, 'Getting all questionnaires should return two questionnaires')
-
     t.end()
   })
 
   test('GQL Create questionnaire -> delete questionnaire -> get them all', async t => {
     await db._util.clearDb()
 
-    const { data: { createQuestionnaire: createdQuestionnaire }, errors: createQuestionnaireErrors }
-      = await mutate(server).asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
-
-    t.deepEqual(createQuestionnaireErrors, undefined)
-
-    const { errors: deleteErrors } = await mutate(server).asAdmin({ mutation: DELETE_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
-
-    t.deepEqual(deleteErrors, undefined)
-
-    const { data: { questionnaires }, errors: getErrors } = await query(server).asAdmin({ query: GET_QUESTIONNAIRES })
-
-    t.deepEqual(getErrors, undefined)
-
+    const { data: { createQuestionnaire: createdQuestionnaire }}
+      = await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+    await mutate(server).noError().asAdmin({ mutation: DELETE_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
+    const { data: { questionnaires }} = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRES })
     t.deepEqual(questionnaires, [], 'There shouldn\'t be any questionnaires after one is created and one is deleted')
-
     t.end()
   })
 }
