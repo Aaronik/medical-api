@@ -110,12 +110,19 @@ export default function Server(knex: Knex) {
           const { user }: { user: Partial<T.MeUserInput> } = enforceArgs(args, 'user')
           if (!context.user) throw new ForbiddenError('Must be authenticated to update user.')
 
+          // users must be able to delete their images
+          const newImageUrl = user.imageUrl === ""
+            ? user.imageUrl
+            : user.imageUrl
+              ? user.imageUrl
+              : context.user.imageUrl || null
+
           const update = {
             id: context.user.id,
             role: user.role || context.user.role || null,
             email: user.email || context.user.email || null,
             name: user.name || context.user.name || null,
-            imageUrl: user.imageUrl || context.user.imageUrl || null,
+            imageUrl: newImageUrl,
             birthday: user.birthday || context.user.birthday || null
           }
 

@@ -15,6 +15,7 @@ const UPDATE_ME = gql`
   mutation ($user: MeInput) {
     updateMe(user:$user) {
       role
+      imageUrl
     }
   }
 `
@@ -33,6 +34,7 @@ const ME = gql`
       role
       lastVisit
       joinDate
+      imageUrl
     }
   }
 `
@@ -169,15 +171,23 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     // The trick here is I'm doing as an admin a change to doctor, so we should see the role be doc, which
     // means the update went through.
-    const { data } = await mutate(server).noError().asAdmin({ mutation: UPDATE_ME, variables: { user: {
-      role: 'DOCTOR'
+    const { data: { updateMe: { role }} } = await mutate(server).noError().asAdmin({ mutation: UPDATE_ME, variables: { user: {
+      role: 'DOCTOR',
+      imageUrl: 'www.image.com'
     }}})
 
-    t.equal(data?.updateMe?.role, 'DOCTOR')
+    // Make sure images can be set to nothing
+    const { data: { updateMe: { imageUrl }}} = await mutate(server).noError().asAdmin({ mutation: UPDATE_ME, variables: { user: {
+      imageUrl: ''
+    }}})
+
+    t.equal(role, 'DOCTOR')
+    t.equal(imageUrl, '')
 
     const { data: refetchData } = await query(server).asAdmin({ query: ME })
 
     t.equal(refetchData?.me?.role, 'DOCTOR')
+    t.equal(refetchData?.me?.imageUrl, '')
 
     t.end()
   })

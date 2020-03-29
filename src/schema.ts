@@ -142,7 +142,7 @@ export default gql`
     email: String
     role: Role
     imageUrl: String
-    birthday: Int
+    birthday: String
   }
 
   ### Questionnaire
