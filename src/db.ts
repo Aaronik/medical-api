@@ -371,7 +371,7 @@ const hashPassword = (email: string, password: string) => {
 // For CCPA/GDPR/HIPPA reasons, we break our users up into multiple tables.
 // This helper helps us put them back together again.
 const userTables = (knex: Knex) => {
-  return knex<{}, T.User>('User')
+  return knex('User')
     .join('UserHealth', 'User.id', 'UserHealth.userId')
     .join('UserLogin', 'User.id', 'UserLogin.userId')
 }

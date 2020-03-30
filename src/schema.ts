@@ -126,7 +126,7 @@ export default gql`
     lastVisit: String
     adherence: Int
     imageUrl: String
-    birthday: Int
+    birthday: String
     patients: [User]
     doctors: [User]
   }
