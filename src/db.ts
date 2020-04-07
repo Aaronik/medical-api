@@ -115,6 +115,11 @@ function Db(knex: Knex) {
         return questionnaire
       },
 
+      findAssignedToUser: async (userId: number) => {
+        const questionnaireIds = await knex('QuestionnaireAssignment').select('questionnaireId').where({ assigneeId: userId })
+        return Promise.all(questionnaireIds.map(({ questionnaireId }) => db.Questionnaire.findById(questionnaireId, userId)))
+      },
+
       all: async (userId?: number) => {
         const questionnaires = await knex('Questionnaire').select()
         return Promise.all(questionnaires.map(async questionnaire => {
@@ -196,6 +201,29 @@ function Db(knex: Knex) {
         const rows = options.map(option => ({ userId, questionId, optionId: option.id }))
         await knex.batchInsert('QuestionResponseChoice', rows, 30)
         return true
+      },
+
+    },
+
+    QuestionnaireAssignment: {
+
+      create: async (questionnaireId: number, assigneeId: number, assignerId: number) => {
+        await knex('QuestionnaireAssignment').insert({ questionnaireId, assigneeId, assignerId })
+        return true
+      },
+
+      delete: async (questionnaireId: number, assigneeId: number, assignerId: number) => {
+        await knex('QuestionnaireAssignment').where({ questionnaireId, assigneeId, assignerId }).delete()
+        return true
+      },
+
+      findByAssignerId: async (assignerId: number) => {
+        const assignments = await knex<{}, T.QuestionnaireAssignment[]>('QuestionnaireAssignment').where({ assignerId }).select()
+        return Promise.all(assignments.map(async assignment => {
+          assignment.questionnaire = await db.Questionnaire.findById(assignment.questionnaireId)
+          assignment.assignee = await db.User.findById(assignment.assigneeId)
+          return assignment
+        }))
       },
 
     },
@@ -324,8 +352,14 @@ function Db(knex: Knex) {
     _util: {
       // It doesn't need to be said that this is a test only function. Calling this against
       // a live DB will result in epic disaster.
+      // Since this function is called lots in the test suite, we want it to be fast.
+      // Originally we just migrated down and up each time, but that took an increasingly
+      // long time to do. This is much faster, but involves keeping track of each table.
+      // Ideally we have a way to clear the db real fast, but not have to list each table
+      // here.
       clearDb: async () => {
-        for (let table of [
+        for (let table of [ // Must be in order to prevent foreign key errors
+          'QuestionnaireAssignment',
           'DoctorPatientRelationship',
           'TimelineGroupNesting', 'TimelineItem', 'TimelineGroup',
           'QuestionRelation',

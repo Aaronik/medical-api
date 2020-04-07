@@ -69,6 +69,16 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.findById(id, context.user?.id)
         },
 
+        myQuestionnaires: async (parent, args, context, info) => {
+          enforceRoles(context.user)
+          return db.Questionnaire.findAssignedToUser(context.user.id)
+        },
+
+        myQuestionnaireAssignments: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR', 'ADMIN')
+          return db.QuestionnaireAssignment.findByAssignerId(context.user.id)
+        },
+
         question: async (parent, args, context, info) => {
           const { id } = enforceArgs(args, 'id')
           return db.Question.findById(id, context.user?.id)
@@ -194,6 +204,18 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.delete(id)
         },
 
+        createQuestionnaireAssignment: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR', 'ADMIN')
+          const { questionnaireId, assigneeId } = enforceArgs(args, 'questionnaireId', 'assigneeId')
+          return db.QuestionnaireAssignment.create(questionnaireId, assigneeId, context.user.id)
+        },
+
+        deleteQuestionnaireAssignment: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR', 'ADMIN')
+          const { questionnaireId, assigneeId } = enforceArgs(args, 'questionnaireId', 'assigneeId')
+          return db.QuestionnaireAssignment.delete(questionnaireId, assigneeId, context.user.id)
+        },
+
         addQuestions: async (parent, { questions }, context, info) => {
           questions.forEach(q => enforceArgs(q, 'text', 'type', 'questionnaireId'))
           return db.Question.create(questions)
@@ -275,9 +297,13 @@ type ApolloOptions = ApolloServerExpressConfig & {
 // so as to prevent something like const { id } = enforceArgs(args, 'field', 'gnoll', 'grassland')
 // (id not being on the list of permitted arguments, so not destructurable)
 const enforceArgs = <_, T>(args: any, ...fields: string[]) => {
+  const missingFields = []
+
   fields.forEach(field => {
-    if (!args.hasOwnProperty(field)) throw new UserInputError(`You must provide the following fields: ${fields}`)
+    if (!args.hasOwnProperty(field)) missingFields.push(field)
   })
+
+  if (missingFields.length) throw new UserInputError(`You must provide the following fields: ${missingFields.join(', ')}`)
 
   return args
 }

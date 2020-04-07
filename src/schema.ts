@@ -1,5 +1,16 @@
 import { gql } from 'apollo-server'
 
+// TODO:
+// * Implement myQuestionnaires
+// * Implement createQuestionnaireAssignment
+// * How will a questionnaire assignment be removed?
+//   * When the questionnaire has been completely finished (very tricky b/c of `next` options)
+//   * It won't, it'll just be marked as completed by the FE (could basically be if it was started, at least for now.)
+//     * Then all questionnaires will always be fetched when getting myQuestionnaires
+//   * Kick the can down the road by implementing a SS function `isQuestionnaireComplete` or something that
+//     will adorn the questionnaire with another field, `completionStatus` or something with options:
+//     COMPLETE, IN_PROGRESS, UNSTARTED
+
 export default gql`
 
   type Query {
@@ -17,6 +28,12 @@ export default gql`
     questionnaires: [Questionnaire]
     questionnaire(id: Int!): Questionnaire
     question(id: Int!): Question
+
+    " The questionnaires that are assigned to me as a patient "
+    myQuestionnaires: [Questionnaire]
+
+    " The questionnaire assignments that I've created as a doctor "
+    myQuestionnaireAssignments: [QuestionnaireAssignment]
   }
 
   type Mutation {
@@ -46,6 +63,9 @@ export default gql`
     submitTextQuestionResponse(questionId: Int!, value: String!): Boolean
     submitChoiceQuestionResponse(questionId: Int!, value: String!): Boolean
     submitChoiceQuestionResponses(questionId: Int!, values: [String]!): Boolean
+
+    createQuestionnaireAssignment(questionnaireId: Int!, assigneeId: Int!): Boolean
+    deleteQuestionnaireAssignment(questionnaireId: Int!, assigneeId: Int!): Boolean
   }
 
   ### Timeline
@@ -151,6 +171,13 @@ export default gql`
     id: Int
     title: String
     questions: [Question]
+  }
+
+  type QuestionnaireAssignment {
+    assigneeId: Int
+    assignee: User
+    questionnaireId: Int
+    questionnaire: Questionnaire
   }
 
   union Question =

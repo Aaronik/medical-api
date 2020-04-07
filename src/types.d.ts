@@ -30,6 +30,14 @@ export type Questionnaire = {
   questions: Question[]
 }
 
+export type QuestionnaireAssignment = {
+  questionnaireId: number
+  questionnaire?: Questionnaire
+  assigneeId: number
+  assignee?: User
+  assignerId: number
+}
+
 export type Question =
     BooleanQuestion
   | TextQuestion
