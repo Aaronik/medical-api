@@ -73,7 +73,7 @@ const GET_QUESTIONNAIRE = gql`
 
 const GET_QUESTIONNAIRES = gql`
   query {
-    questionnaires {
+    allQuestionnaires {
       id
       title
       questions ${QUESTIONS_FRAGMENT}
@@ -258,12 +258,12 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.equal(getQuestionOfType(gottenQuestionnaire, 'SINGLE_CHOICE').singleChoiceResp, singleChoiceResponse)
     t.deepEqual(getQuestionOfType(gottenQuestionnaire, 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceResponse])
 
-    const { data: { questionnaires }} = await query(server).asPatient({ query: GET_QUESTIONNAIRES })
+    const { data: { questionnaire }} = await query(server).noError().asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id } })
 
-    t.equal(getQuestionOfType(questionnaires[0], 'BOOLEAN').boolResp, true)
-    t.equal(getQuestionOfType(questionnaires[0], 'TEXT').textResp, 'text answer')
-    t.equal(getQuestionOfType(questionnaires[0], 'SINGLE_CHOICE').singleChoiceResp, singleChoiceResponse)
-    t.deepEqual(getQuestionOfType(questionnaires[0], 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceResponse])
+    t.equal(getQuestionOfType(questionnaire, 'BOOLEAN').boolResp, true)
+    t.equal(getQuestionOfType(questionnaire, 'TEXT').textResp, 'text answer')
+    t.equal(getQuestionOfType(questionnaire, 'SINGLE_CHOICE').singleChoiceResp, singleChoiceResponse)
+    t.deepEqual(getQuestionOfType(questionnaire, 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceResponse])
 
     t.end()
   })
@@ -372,8 +372,8 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
     await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
-    const { data: { questionnaires }} = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRES })
-    t.equal(questionnaires.length, 2, 'Getting all questionnaires should return two questionnaires')
+    const { data: { allQuestionnaires }} = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRES })
+    t.equal(allQuestionnaires.length, 2, 'Getting all questionnaires should return two questionnaires')
     t.end()
   })
 
@@ -383,8 +383,8 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     const { data: { createQuestionnaire: createdQuestionnaire }}
       = await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
     await mutate(server).noError().asAdmin({ mutation: DELETE_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
-    const { data: { questionnaires }} = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRES })
-    t.deepEqual(questionnaires, [], 'There shouldn\'t be any questionnaires after one is created and one is deleted')
+    const { data: { allQuestionnaires }} = await query(server).noError().asAdmin({ query: GET_QUESTIONNAIRES })
+    t.deepEqual(allQuestionnaires, [], 'There shouldn\'t be any questionnaires after one is created and one is deleted')
     t.end()
   })
 }

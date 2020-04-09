@@ -60,7 +60,8 @@ export default function Server(knex: Knex) {
           return db.User.findDoctorsForPatientId(context.user.id)
         },
 
-        questionnaires: async (parent, args, context, info) => {
+        allQuestionnaires: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'ADMIN')
           return db.Questionnaire.all(context.user?.id)
         },
 
@@ -69,12 +70,12 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.findById(id, context.user?.id)
         },
 
-        myQuestionnaires: async (parent, args, context, info) => {
+        questionnairesAssignedToMe: async (parent, args, context, info) => {
           enforceRoles(context.user)
           return db.Questionnaire.findAssignedToUser(context.user.id)
         },
 
-        myQuestionnaireAssignments: async (parent, args, context, info) => {
+        questionnaireAssignmentsIMade: async (parent, args, context, info) => {
           enforceRoles(context.user, 'DOCTOR', 'ADMIN')
           return db.QuestionnaireAssignment.findByAssignerId(context.user.id)
         },

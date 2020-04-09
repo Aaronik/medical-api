@@ -1,12 +1,12 @@
 import { gql } from 'apollo-server'
 
 // TODO:
-// * Implement myQuestionnaires
+// * Implement questionnairesAssignedToMe
 // * Implement createQuestionnaireAssignment
 // * How will a questionnaire assignment be removed?
 //   * When the questionnaire has been completely finished (very tricky b/c of `next` options)
 //   * It won't, it'll just be marked as completed by the FE (could basically be if it was started, at least for now.)
-//     * Then all questionnaires will always be fetched when getting myQuestionnaires
+//     * Then all questionnaires will always be fetched when getting questionnairesAssignedToMe
 //   * Kick the can down the road by implementing a SS function `isQuestionnaireComplete` or something that
 //     will adorn the questionnaire with another field, `completionStatus` or something with options:
 //     COMPLETE, IN_PROGRESS, UNSTARTED
@@ -25,15 +25,18 @@ export default gql`
     timelineGroups: [TimelineGroup]
     timelineGroup(id: Int!): TimelineGroup
 
-    questionnaires: [Questionnaire]
+    allQuestionnaires: [Questionnaire]
     questionnaire(id: Int!): Questionnaire
     question(id: Int!): Question
 
     " The questionnaires that are assigned to me as a patient "
-    myQuestionnaires: [Questionnaire]
+    questionnairesAssignedToMe: [Questionnaire]
 
-    " The questionnaire assignments that I've created as a doctor "
-    myQuestionnaireAssignments: [QuestionnaireAssignment]
+    " Th questionnaires that I created as a doctor "
+    questionnairesIMade: [Questionnaire]
+
+    " As a doctor, a listing of which questionnaires I've assigned to which patients "
+    questionnaireAssignmentsIMade: [QuestionnaireAssignment]
   }
 
   type Mutation {

@@ -16,7 +16,7 @@ const DELETE_QUESTIONNAIRE_ASSIGNMENT = gql`
 
 const MY_QUESTIONNAIRES = gql`
   query {
-    myQuestionnaires {
+    questionnairesAssignedToMe {
       id
     }
   }
@@ -40,7 +40,7 @@ const CREATE_QUESTIONNAIRE = gql`
 
 const MY_QUESTIONNAIRE_ASSIGNMENTS = gql`
   query {
-    myQuestionnaireAssignments {
+    questionnaireAssignmentsIMade {
       assigneeId
     }
   }
@@ -50,7 +50,7 @@ const QUESTIONNAIRE_TITLE = 'questionnaire title'
 
 export const test: TestModuleExport = (test, query, mutate, knex, db, server) => {
 
-  test.only('GQL Create a Questionnaire Assignment -> Retrieve the assignment as doctor/patient -> Delete the assignment', async t => {
+  test('GQL Create a Questionnaire Assignment -> Retrieve the assignment as doctor/patient -> Delete the assignment', async t => {
     await db._util.clearDb()
 
     // Create the questionnaire
@@ -66,14 +66,14 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     // Test to make sure the patient can see their new questionnaire
     {
       // Grab the questionnaire from the patient's perspective
-      const { data: { myQuestionnaires }} = await query(server).noError().asPatient({ query: MY_QUESTIONNAIRES })
-      t.deepEqual(myQuestionnaires, [{ id: questionnaireId }])
+      const { data: { questionnairesAssignedToMe }} = await query(server).noError().asPatient({ query: MY_QUESTIONNAIRES })
+      t.deepEqual(questionnairesAssignedToMe, [{ id: questionnaireId }])
     }
 
     // Test to make sure the doctor can see the questionnaire that they assigned
     {
-      const { data: { myQuestionnaireAssignments }} = await query(server).noError().asDoctor({ query: MY_QUESTIONNAIRE_ASSIGNMENTS })
-      t.deepEqual(myQuestionnaireAssignments, [{ assigneeId: patientId }])
+      const { data: { questionnaireAssignmentsIMade }} = await query(server).noError().asDoctor({ query: MY_QUESTIONNAIRE_ASSIGNMENTS })
+      t.deepEqual(questionnaireAssignmentsIMade, [{ assigneeId: patientId }])
     }
 
     // Now we can delete the relation
@@ -81,8 +81,8 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     // Test that the questionnaire was successfully unassigned
     {
-      const { data: { myQuestionnaires }} = await query(server).noError().asPatient({ query: MY_QUESTIONNAIRES })
-      t.deepEqual(myQuestionnaires, [])
+      const { data: { questionnairesAssignedToMe }} = await query(server).noError().asPatient({ query: MY_QUESTIONNAIRES })
+      t.deepEqual(questionnairesAssignedToMe, [])
     }
 
     t.end()
