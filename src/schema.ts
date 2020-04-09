@@ -1,16 +1,5 @@
 import { gql } from 'apollo-server'
 
-// TODO:
-// * Implement questionnairesAssignedToMe
-// * Implement createQuestionnaireAssignment
-// * How will a questionnaire assignment be removed?
-//   * When the questionnaire has been completely finished (very tricky b/c of `next` options)
-//   * It won't, it'll just be marked as completed by the FE (could basically be if it was started, at least for now.)
-//     * Then all questionnaires will always be fetched when getting questionnairesAssignedToMe
-//   * Kick the can down the road by implementing a SS function `isQuestionnaireComplete` or something that
-//     will adorn the questionnaire with another field, `completionStatus` or something with options:
-//     COMPLETE, IN_PROGRESS, UNSTARTED
-
 export default gql`
 
   type Query {

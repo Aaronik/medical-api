@@ -120,6 +120,11 @@ function Db(knex: Knex) {
         return Promise.all(questionnaireIds.map(({ questionnaireId }) => db.Questionnaire.findById(questionnaireId, userId)))
       },
 
+      findMadeByUser: async (userId: number) => {
+        const ids = await knex('Questionnaire').select('id').where({ creatingUserId: userId })
+        return Promise.all(ids.map(({ id }) => db.Questionnaire.findById(id)))
+      },
+
       all: async (userId?: number) => {
         const questionnaires = await knex('Questionnaire').select()
         return Promise.all(questionnaires.map(async questionnaire => {
@@ -128,8 +133,8 @@ function Db(knex: Knex) {
         }))
       },
 
-      create: async (questionnaire: Omit<T.Questionnaire, 'id'>) => {
-        const [questionnaireId] = await knex('Questionnaire').insert({ title: questionnaire.title })
+      create: async (questionnaire: Omit<T.Questionnaire, 'id'>, userId: number) => {
+        const [questionnaireId] = await knex('Questionnaire').insert({ title: questionnaire.title, creatingUserId: userId })
 
         await Promise.all(questionnaire.questions.map(async q => {
           const [questionId] = await knex('Question').insert({ type: q.type, text: q.text, questionnaireId })

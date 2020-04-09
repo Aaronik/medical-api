@@ -75,6 +75,11 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.findAssignedToUser(context.user.id)
         },
 
+        questionnairesIMade: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR', 'ADMIN')
+          return db.Questionnaire.findMadeByUser(context.user.id)
+        },
+
         questionnaireAssignmentsIMade: async (parent, args, context, info) => {
           enforceRoles(context.user, 'DOCTOR', 'ADMIN')
           return db.QuestionnaireAssignment.findByAssignerId(context.user.id)
@@ -187,6 +192,7 @@ export default function Server(knex: Knex) {
         },
 
         createQuestionnaire: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR', 'ADMIN')
           const { title, questions }: { title: string, questions: T.Question[] } = enforceArgs(args, 'title', 'questions')
 
           // Make sure questions are shaped correctly too.
@@ -197,7 +203,7 @@ export default function Server(knex: Knex) {
               enforceArgs(q, 'options')
           })
 
-          return db.Questionnaire.create({ title, questions })
+          return db.Questionnaire.create({ title, questions }, context.user.id)
         },
 
         deleteQuestionnaire: async (parent, args, context, info) => {

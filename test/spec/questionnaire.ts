@@ -1,7 +1,6 @@
 import { gql } from 'apollo-server'
-import createTestClient from 'test/create-test-client'
 import { TestModuleExport } from 'test/runner'
-import { Question, Questionnaire, QuestionOption, QuestionType, QuestionRelation } from 'types'
+import { Question, Questionnaire, QuestionOption, QuestionRelation, QuestionType } from 'types'
 
 // Questions, since they're unions, require an unwieldy fragment. Here it is for reuse.
 const QUESTIONS_FRAGMENT = gql`
@@ -74,6 +73,16 @@ const GET_QUESTIONNAIRE = gql`
 const GET_QUESTIONNAIRES = gql`
   query {
     allQuestionnaires {
+      id
+      title
+      questions ${QUESTIONS_FRAGMENT}
+    }
+  }
+`
+
+const GET_QUESTIONNAIRES_I_MADE = gql`
+  query {
+    questionnairesIMade {
       id
       title
       questions ${QUESTIONS_FRAGMENT}
@@ -185,9 +194,22 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.end()
   })
 
+  test('GQL Add Questionnaire -> Get Questionnaires I Made', async t => {
+    await db._util.clearDb()
+
+    await mutate(server).noError()
+      .asDoctor({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+
+    const { data: { questionnairesIMade: questionnaires }} = await query(server).noError().asDoctor({ query: GET_QUESTIONNAIRES_I_MADE })
+
+    t.equal(questionnaires?.length, 1)
+
+    t.end()
+  })
+
   test('GQL Add Questionnaire -> Get Question', async t => {
     const { data: { createQuestionnaire: questionnaire }} =
-      await mutate(server).asUnprived({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+      await mutate(server).asDoctor({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
 
     t.equal(questionnaire?.questions?.length, questions.length)
 

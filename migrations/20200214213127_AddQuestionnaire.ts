@@ -5,7 +5,11 @@ export async function up(knex: Knex): Promise<any> {
   await knex.raw(`
     CREATE TABLE IF NOT EXISTS Questionnaire (
       id int(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,
-      title varchar(255)
+      title varchar(255),
+      creatingUserId int(11) NOT NULL,
+
+      CONSTRAINT questionnaire_creating_user_id_user FOREIGN KEY (creatingUserId)
+      REFERENCES User(id)
     ) ENGINE=InnoDB
   `)
 
