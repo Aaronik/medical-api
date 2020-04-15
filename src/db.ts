@@ -259,7 +259,15 @@ function Db(knex: Knex) {
       update: async (question: T.Question) => {
         if (!question.id) throw new Error('Must supply at minimum an id to update a question.')
 
-        await knex('Question').where({ id: question.id }).update(question)
+        const { id, text } = question
+
+        await knex('Question').where({ id: question.id }).update({ id, text })
+
+        await Promise.all(question.options?.map(async o => {
+          if (o.id) await knex('QuestionOption').where({ id: o.id }).update({ text: o.text })
+          else await knex('QuestionOption').insert({ questionId: question.id, text: o.text })
+        }))
+
         return db.Question.findById(question.id)
       },
 
