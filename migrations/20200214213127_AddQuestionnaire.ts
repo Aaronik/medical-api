@@ -31,10 +31,9 @@ export async function up(knex: Knex): Promise<any> {
     CREATE TABLE IF NOT EXISTS QuestionOption (
       id int(11) NOT NULL AUTO_INCREMENT,
       questionId int(11) NOT NULL,
-      value varchar(255),
       text text,
 
-      PRIMARY KEY (id, questionId, value),
+      PRIMARY KEY (id),
 
       CONSTRAINT question_option_question FOREIGN KEY (questionId)
       REFERENCES Question(id) ON DELETE CASCADE
@@ -75,10 +74,10 @@ export async function up(knex: Knex): Promise<any> {
 
       PRIMARY KEY (questionId, userId, optionId),
 
-      CONSTRAINT multiple_response_question FOREIGN KEY (questionId)
+      CONSTRAINT question_response_question FOREIGN KEY (questionId)
       REFERENCES Question(id) ON DELETE CASCADE,
 
-      CONSTRAINT multiple_response_option FOREIGN KEY (optionId)
+      CONSTRAINT question_response_option FOREIGN KEY (optionId)
       REFERENCES QuestionOption(id) ON DELETE CASCADE
     ) ENGINE=InnoDB
   `)

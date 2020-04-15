@@ -142,7 +142,7 @@ function Db(knex: Knex) {
           if (!canHaveOptions(q)) return
 
           await Promise.all(q.options.map(async o => {
-            return knex('QuestionOption').insert({ questionId, value: o.value, text: o.text })
+            return knex('QuestionOption').insert({ questionId, text: o.text })
           }))
         }))
 
@@ -179,31 +179,30 @@ function Db(knex: Knex) {
         }
       },
 
-      submitChoiceQuestionResponse: async (userId: string, questionId: string, value: string) => {
-        const option = await knex<{}, T.QuestionOption>('QuestionOption').select('id').where({ questionId, value }).first()
-        if (!option) throw new Error('Could not find specified option')
-        const optionId = option.id
+      submitChoiceQuestionResponse: async (userId: string, questionId: number, optionId: number) => {
+        const option = await knex<{}, T.QuestionOption>('QuestionOption').where({ id: optionId }).first()
 
         // we remove all the existing responses for this question
-        await knex('QuestionResponseChoice').where({ userId, questionId }).delete()
+        await knex('QuestionResponseChoice').where({ userId, questionId: option.questionId }).delete()
 
-        await knex('QuestionResponseChoice').insert({ userId, questionId, optionId })
+        await knex('QuestionResponseChoice').insert({ userId, questionId: option.questionId, optionId })
         return true
       },
 
-      submitChoiceQuestionResponses: async (userId: string, questionId: string, values: string[]) => {
-        const questionMarks = values.map(v => '?').join(',')
-        const rawResp = values.length
-          ? await knex.raw(`SELECT * FROM QuestionOption WHERE questionId = ? AND value IN (${questionMarks})`, [questionId, ...values])
-          : [[]]
-        const options = rawResp[0]
-
-        if (options.length !== values.length) throw new Error('Could not find all specified options')
+      submitChoiceQuestionResponses: async (userId: string, questionId: number, optionIds: number[]) => {
+        await ensureOptionsAreForSingleQuestion(knex, questionId, optionIds)
 
         // we remove all the existing responses for this question
         await knex('QuestionResponseChoice').where({ userId, questionId }).delete()
 
-        const rows = options.map(option => ({ userId, questionId, optionId: option.id }))
+        // If the user wants to remove all their options, we're done
+        if (optionIds.length === 0) return true
+
+        // Find out what question these are for. They all have to be for the same question, so we'll check the first
+        // and assume it's the same with the rest. If not, the DB will throw.
+        const firstOption = await knex('QuestionOption').where({ id: optionIds[0] }).first()
+
+        const rows = optionIds.map(optionId => ({ userId, questionId: firstOption.questionId, optionId }))
         await knex.batchInsert('QuestionResponseChoice', rows, 30)
         return true
       },
@@ -250,7 +249,7 @@ function Db(knex: Knex) {
           const [questionId] = await knex('Question').insert({ questionnaireId: q.questionnaireId, text: q.text, type: q.type })
 
           q.options?.forEach(async o => {
-            await knex('QuestionOption').insert({ questionId, value: o.value, text: o.text })
+            await knex('QuestionOption').insert({ questionId, text: o.text })
           })
 
           return Object.assign({ id: questionId }, q)
@@ -259,6 +258,7 @@ function Db(knex: Knex) {
 
       update: async (question: T.Question) => {
         if (!question.id) throw new Error('Must supply at minimum an id to update a question.')
+
         await knex('Question').where({ id: question.id }).update(question)
         return db.Question.findById(question.id)
       },
@@ -295,11 +295,11 @@ function Db(knex: Knex) {
           } else if (q.type === 'SINGLE_CHOICE') {
             const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>('QuestionResponseChoice').where({ questionId, userId }).first()
             const choiceOption = q.options.find(o => o.id === choiceResponse?.optionId)
-            q.response = choiceOption?.value
+            q.response = choiceOption
           } else if (q.type === 'MULTIPLE_CHOICE') {
             const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>('QuestionResponseChoice').where({ questionId, userId })
             const choiceOptions = choiceResponses.map(response => q.options.find(option => option.id === response.optionId))
-            q.response = choiceOptions.map(o => o.value)
+            q.response = choiceOptions
           }
         }))
 
@@ -425,6 +425,21 @@ const sanitizeTimelineItem = <T extends Partial<T.TimelineItem>>(item: T) => {
   if (item.start) item.start = new Date(item.start)
   if (item.end) item.end = new Date(item.end)
   return item
+}
+
+// TODO Test some ops given then no options given
+// A few endpoints related to saving answers to questions can take multiple responses
+// (options). This function both ensures all options given are for the questionId given.
+const ensureOptionsAreForSingleQuestion = async (knex, questionId: number, optionIds: number[]) => {
+  if (optionIds.length === 0) return
+
+  const questionMarks     = optionIds.map(v => '?').join(',')
+  const questionIdObjects = await knex.raw(`SELECT questionId FROM QuestionOption WHERE id IN (${questionMarks})`, optionIds)
+  const questionIds       = questionIdObjects[0].map(o => o.questionId)
+  const questionIdSingle  = _.uniq(questionIds)
+
+  if (questionIdSingle.length !== 1) throw new Error('All options must be for only a single question.')
+  if (questionIdSingle[0] !== questionId) throw new Error('The options given are not for the questionId supplied.')
 }
 
 export default Db

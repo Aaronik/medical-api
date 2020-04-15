@@ -57,13 +57,13 @@ export interface TextQuestion extends QuestionMeta {
 export interface SingleChoiceQuestion extends QuestionMeta {
   type: 'SINGLE_CHOICE'
   options: QuestionOption[]
-  response?: string
+  response?: QuestionOption
 }
 
 export interface MultipleChoiceQuestion extends QuestionMeta {
   type: 'MULTIPLE_CHOICE'
   options: QuestionOption[]
-  response?: string[]
+  response?: QuestionOption[]
 }
 
 export interface QuestionMeta {
@@ -80,7 +80,6 @@ export type QuestionOption = {
   id: number
   questionId: number
   question?: Question
-  value: string
   text: string
 }
 

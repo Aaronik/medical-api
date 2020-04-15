@@ -2,60 +2,56 @@ import { gql } from 'apollo-server'
 import { TestModuleExport } from 'test/runner'
 import { Question, Questionnaire, QuestionOption, QuestionRelation, QuestionType } from 'types'
 
+const CHOICE_QUESTIONS_SUBFRAGMENT = `
+  id
+  type
+  text
+  options {
+   id
+   text
+  }
+  next {
+   includes
+   equals
+   nextQuestionId
+  }
+`
+
+const NON_CHOICE_QUESTIONS_SUBFRAGMENT = `
+  id
+  type
+  text
+  next {
+    includes
+    equals
+    nextQuestionId
+  }
+`
+
 // Questions, since they're unions, require an unwieldy fragment. Here it is for reuse.
 const QUESTIONS_FRAGMENT = gql`
   {
     ... on BooleanQuestion {
-      id
-      type
       boolResp: response
-      text
-      next {
-        includes
-        equals
-        nextQuestionId
-      }
+      ${NON_CHOICE_QUESTIONS_SUBFRAGMENT}
     }
     ... on TextQuestion {
-      id
-      type
       textResp: response
-      text
-      next {
-        includes
-        equals
-        nextQuestionId
-      }
+      ${NON_CHOICE_QUESTIONS_SUBFRAGMENT}
     }
     ... on SingleChoiceQuestion {
-      id
-      type
-      singleChoiceResp: response
-      text
-      options {
-        value
+      singleChoiceResp: response {
+        id
         text
       }
-      next {
-        includes
-        equals
-        nextQuestionId
-      }
+      ${CHOICE_QUESTIONS_SUBFRAGMENT}
     }
     ... on MultipleChoiceQuestion {
-      id
-      type
-      multipleChoiceResp: response
-      text
-      options {
-        value
+      multipleChoiceResp: response {
+        id
         text
       }
-      next {
-        includes
-        equals
-        nextQuestionId
-      }
+      ${CHOICE_QUESTIONS_SUBFRAGMENT}
     }
   }
 `
@@ -143,10 +139,12 @@ const SUBMIT_TEXT_RESPONSE = gql`
 `
 
 const SUBMIT_CHOICE_RESPONSE = gql`
-  mutation SubmitChoice($questionId: Int!, $value: String!) {
-    submitChoiceQuestionResponse(questionId: $questionId, value: $value)
+  mutation SubmitChoice($questionId: Int!, $optionId: Int!) {
+    submitChoiceQuestionResponse(questionId: $questionId, optionId: $optionId)
   }
 `
+
+// TODO SUBMIT_CHOICE_RESPONSES
 
 const DELETE_QUESTIONNAIRE = gql`
   mutation DeleteQuestionnaire($id: Int!) {
@@ -168,12 +166,12 @@ const questions: Omit<Omit<Question, 'id'>, 'questionnaireId'>[] = [
   {
     type: 'SINGLE_CHOICE',
     text: 'Sample Single Choice Question',
-    options: [ { value: 'val', text: 'text' } as QuestionOption ],
+    options: [ { text: 'text' } as QuestionOption ],
   },
   {
     type: 'MULTIPLE_CHOICE',
     text: 'Sample Multiple Choice Question',
-    options: [ { value: 'val', text: 'text' } as QuestionOption ],
+    options: [ { text: 'text' } as QuestionOption ],
   },
 ]
 
@@ -188,8 +186,10 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     const singleChoiceQuestion = questionnaire.questions.find(q => q.type === 'SINGLE_CHOICE')
     const multipleChoiceQuestion = questionnaire.questions.find(q => q.type === 'MULTIPLE_CHOICE')
 
-    t.deepEqual(singleChoiceQuestion.options, [{ value: 'val', text: 'text' }])
-    t.deepEqual(multipleChoiceQuestion.options, [{ value: 'val', text: 'text' }])
+    t.equal(singleChoiceQuestion.options.length, 1)
+    t.deepEqual(singleChoiceQuestion.options[0].text, 'text')
+    t.equal(multipleChoiceQuestion.options.length, 1)
+    t.deepEqual(multipleChoiceQuestion.options[0].text, 'text')
 
     t.end()
   })
@@ -243,20 +243,17 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     const booleanQuestion = createdQuestionnaire?.questions?.find(q => q.type === 'BOOLEAN')
     const textQuestion = createdQuestionnaire?.questions?.find(q => q.type === 'TEXT')
 
-    const singleChoiceResponse = singleChoiceQuestion?.options?.[0]?.value
-    const multipleChoiceResponse = multipleChoiceQuestion?.options?.[0]?.value
+    const singleChoiceOption = singleChoiceQuestion?.options?.[0]
+    const multipleChoiceOption = multipleChoiceQuestion?.options?.[0]
 
     const submitWithNoErrors = async () => {
       const boolResp = await mutate(server).noError()
         .asPatient({ mutation: SUBMIT_BOOLEAN_RESPONSE, variables: { questionId: booleanQuestion.id, value: true }})
       const textResp = await mutate(server).noError()
         .asPatient({ mutation: SUBMIT_TEXT_RESPONSE, variables: { questionId: textQuestion.id, value: 'text answer' }})
-      const singResp = await mutate(server).noError()
-        .asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: singleChoiceQuestion.id, value: singleChoiceResponse }})
-      const multResp = await mutate(server).noError()
-        .asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: multipleChoiceQuestion.id, value: multipleChoiceResponse }})
-      const getResp = await query(server).noError()
-        .asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
+      const singResp = await mutate(server).noError().asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: singleChoiceQuestion.id, optionId: singleChoiceOption.id }})
+      const multResp = await mutate(server).noError().asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: multipleChoiceQuestion.id, optionId: multipleChoiceOption.id }})
+      const getResp = await query(server).noError().asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
 
       return { boolResp, textResp, singResp, multResp, getResp }
     }
@@ -277,15 +274,15 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     t.equal(getQuestionOfType(gottenQuestionnaire, 'BOOLEAN').boolResp, true)
     t.equal(getQuestionOfType(gottenQuestionnaire, 'TEXT').textResp, 'text answer')
-    t.equal(getQuestionOfType(gottenQuestionnaire, 'SINGLE_CHOICE').singleChoiceResp, singleChoiceResponse)
-    t.deepEqual(getQuestionOfType(gottenQuestionnaire, 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceResponse])
+    t.equal(getQuestionOfType(gottenQuestionnaire, 'SINGLE_CHOICE').singleChoiceResp.id, singleChoiceOption.id)
+    t.deepEqual(getQuestionOfType(gottenQuestionnaire, 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceOption])
 
     const { data: { questionnaire }} = await query(server).noError().asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id } })
 
     t.equal(getQuestionOfType(questionnaire, 'BOOLEAN').boolResp, true)
     t.equal(getQuestionOfType(questionnaire, 'TEXT').textResp, 'text answer')
-    t.equal(getQuestionOfType(questionnaire, 'SINGLE_CHOICE').singleChoiceResp, singleChoiceResponse)
-    t.deepEqual(getQuestionOfType(questionnaire, 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceResponse])
+    t.equal(getQuestionOfType(questionnaire, 'SINGLE_CHOICE').singleChoiceResp.id, singleChoiceOption.id)
+    t.deepEqual(getQuestionOfType(questionnaire, 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceOption])
 
     t.end()
   })
@@ -343,7 +340,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
       questionnaireId: createdQuestionnaire.id,
       text: 'Added Question',
       type: 'SINGLE_CHOICE',
-      options: [{ value: 'option', text: 'option' }]
+      options: [{ text: 'option' }]
     }]
 
     await mutate(server).noError().asAdmin({ mutation: ADD_QUESTION, variables: { questions: extraQuestions }})

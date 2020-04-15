@@ -243,27 +243,27 @@ export default function Server(knex: Knex) {
         },
 
         submitBooleanQuestionResponse: async (parent, args, context, info) => {
-          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
           enforceRoles(context.user)
+          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
           return db.Questionnaire.submitBooleanQuestionResponse(context.user.id, questionId, value)
         },
 
         submitTextQuestionResponse: async (parent, args, context, info) => {
-          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
           enforceRoles(context.user)
+          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
           return db.Questionnaire.submitTextQuestionResponse(context.user.id, questionId, value)
         },
 
         submitChoiceQuestionResponse: async (parent, args, context, info) => {
-          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
           enforceRoles(context.user)
-          return db.Questionnaire.submitChoiceQuestionResponse(context.user.id, questionId, value)
+          const { questionId, optionId } = enforceArgs(args, 'optionId', 'questionId')
+          return db.Questionnaire.submitChoiceQuestionResponse(context.user.id, questionId, optionId)
         },
 
         submitChoiceQuestionResponses: async (parent, args, context, info) => {
-          const { questionId, values } = enforceArgs(args, 'questionId', 'values')
           enforceRoles(context.user)
-          return db.Questionnaire.submitChoiceQuestionResponses(context.user.id, questionId, values)
+          const { optionIds, questionId } = enforceArgs(args, 'optionIds', 'questionId')
+          return db.Questionnaire.submitChoiceQuestionResponses(context.user.id, questionId, optionIds)
         },
 
       },

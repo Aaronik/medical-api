@@ -53,8 +53,8 @@ export default gql`
 
     submitBooleanQuestionResponse(questionId: Int!, value: Boolean!): Boolean
     submitTextQuestionResponse(questionId: Int!, value: String!): Boolean
-    submitChoiceQuestionResponse(questionId: Int!, value: String!): Boolean
-    submitChoiceQuestionResponses(questionId: Int!, values: [String]!): Boolean
+    submitChoiceQuestionResponse(questionId: Int!, optionId: Int!): Boolean
+    submitChoiceQuestionResponses(questionId: Int!, optionIds: [Int]!): Boolean
 
     createQuestionnaireAssignment(questionnaireId: Int!, assigneeId: Int!): Boolean
     deleteQuestionnaireAssignment(questionnaireId: Int!, assigneeId: Int!): Boolean
@@ -198,8 +198,8 @@ export default gql`
     type: QuestionType!
     options: [QuestionOption]!
 
-    "Collection of QuestionOption values"
-    response: [String]
+    "Collection of QuestionOptions"
+    response: [QuestionOption]
     next: [QuestionRelation]
   }
 
@@ -213,7 +213,7 @@ export default gql`
     options: [QuestionOption]!
 
     "A single QuestionOption value"
-    response: String
+    response: QuestionOption
     next: [QuestionRelation]
   }
 
@@ -253,12 +253,12 @@ export default gql`
   }
 
   type QuestionOption {
-    value: String
+    id: Int
     text: String
   }
 
   input QuestionOptionInput {
-    value: String
+    id: Int
     text: String
   }
 
