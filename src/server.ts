@@ -118,7 +118,7 @@ export default function Server(knex: Knex) {
         createUser: async (parent, args, context, info) => {
           const { email, password, role, name } = enforceArgs(args, 'email', 'password', 'role', 'name')
           const existingUser = await db.User.findByEmail(email)
-          if (existingUser) throw new ValidationError(`A user with the email ${email} already exists!`)
+          if (existingUser) throw new ValidationError(`A user with that email ${email} already exists!`)
           return db.User.create(email, password, role, name)
         },
 
