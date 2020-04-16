@@ -194,16 +194,13 @@ export default function Server(knex: Knex) {
         createQuestionnaire: async (parent, args, context, info) => {
           enforceRoles(context.user, 'DOCTOR', 'ADMIN')
           const { title, questions }: { title: string, questions: T.Question[] } = enforceArgs(args, 'title', 'questions')
-
-          // Make sure questions are shaped correctly too.
-          questions.forEach(q => {
-            enforceArgs(q, 'type')
-
-            if (q.type === 'SINGLE_CHOICE' || q.type === 'MULTIPLE_CHOICE')
-              enforceArgs(q, 'options')
-          })
-
           return db.Questionnaire.create({ title, questions }, context.user.id)
+        },
+
+        updateQuestionnaire: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR', 'ADMIN')
+          const { id, title, questions } = enforceArgs(args, 'id')
+          return db.Questionnaire.update({ id, title, questions })
         },
 
         deleteQuestionnaire: async (parent, args, context, info) => {

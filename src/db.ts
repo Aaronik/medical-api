@@ -149,6 +149,12 @@ function Db(knex: Knex) {
         return db.Questionnaire.findById(questionnaireId)
       },
 
+      update: async ({ id, title, questions }: { id: number, title?: string, questions?: T.Question[]}) => {
+        if (title) await knex('Questionnaire').where({ id }).update({ title })
+        if (questions) await Promise.all(questions.map(async q => await db.Question.update(q)))
+        return db.Questionnaire.findById(id)
+      },
+
       delete: async (id: number) => {
         return knex('Questionnaire').where({ id }).delete()
       },
@@ -263,10 +269,11 @@ function Db(knex: Knex) {
 
         await knex('Question').where({ id: question.id }).update({ id, text })
 
-        await Promise.all(question.options?.map(async o => {
-          if (o.id) await knex('QuestionOption').where({ id: o.id }).update({ text: o.text })
-          else await knex('QuestionOption').insert({ questionId: question.id, text: o.text })
-        }))
+        if (question.options)
+          await Promise.all(question.options.map(async o => {
+            if (o.id) await knex('QuestionOption').where({ id: o.id }).update({ text: o.text })
+            else await knex('QuestionOption').insert({ questionId: question.id, text: o.text })
+          }))
 
         return db.Question.findById(question.id)
       },

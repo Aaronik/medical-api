@@ -43,7 +43,8 @@ export default gql`
     createTimelineGroup(group: TimelineGroupInput!): TimelineGroup
     updateTimelineGroup(group: TimelineGroupInput!): TimelineGroup
 
-    createQuestionnaire(title:String, questions: [QuestionInput]): Questionnaire
+    createQuestionnaire(title: String, questions: [QuestionInput]): Questionnaire
+    updateQuestionnaire(id: Int!, title: String, questions: [QuestionInput]): Questionnaire
     deleteQuestionnaire(id: Int!): Boolean
 
     addQuestions(questions: [QuestionInput]): [Question]

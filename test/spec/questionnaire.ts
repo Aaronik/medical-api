@@ -102,6 +102,16 @@ const CREATE_QUESTIONNAIRE = gql`
   }
 `
 
+const UPDATE_QUESTIONNAIRE = gql`
+  mutation UpdateQuestionnaire($id: Int!, $title: String, $questions: [QuestionInput]){
+    updateQuestionnaire(id: $id, title: $title, questions: $questions) {
+      id
+      title
+      questions ${QUESTIONS_FRAGMENT}
+    }
+  }
+`
+
 const ADD_QUESTION = gql`
   mutation AddQuestions($questions: [QuestionInput]) {
     addQuestions(questions: $questions) ${QUESTIONS_FRAGMENT}
@@ -190,6 +200,20 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.deepEqual(singleChoiceQuestion.options[0].text, 'text')
     t.equal(multipleChoiceQuestion.options.length, 1)
     t.deepEqual(multipleChoiceQuestion.options[0].text, 'text')
+
+    t.end()
+  })
+
+  test('GQL Add Questionnaire -> Update Questionnaire', async t => {
+    await db._util.clearDb()
+
+    const { data: { createQuestionnaire: { id }}} = await mutate(server).noError()
+      .asDoctor({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
+
+    const newTitle = 'updated quesitonnaire title'
+    const { data: { updateQuestionnaire: questionnaire }} = await mutate(server).noError().asDoctor({ mutation: UPDATE_QUESTIONNAIRE, variables: { id, title: newTitle }})
+
+    t.equal(questionnaire.title, newTitle)
 
     t.end()
   })
