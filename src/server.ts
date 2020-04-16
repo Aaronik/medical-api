@@ -85,6 +85,18 @@ export default function Server(knex: Knex) {
           return db.QuestionnaireAssignment.findByAssignerId(context.user.id)
         },
 
+        questionnairesForMyPatient: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR', 'ADMIN')
+          const { patientId } = enforceArgs(args, 'patientId')
+
+          // ensure doctor is doctor of patient
+          const doctorsPatients = await db.User.findPatientsByDoctorId(context.user.id)
+          if (!doctorsPatients.map(p => p.id).includes(patientId))
+            throw new ForbiddenError('Must request your own patient')
+
+          return db.Questionnaire.findAssignedToUser(patientId)
+        },
+
         question: async (parent, args, context, info) => {
           const { id } = enforceArgs(args, 'id')
           return db.Question.findById(id, context.user?.id)

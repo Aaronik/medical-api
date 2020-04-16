@@ -21,8 +21,11 @@ export default gql`
     " The questionnaires that are assigned to me as a patient "
     questionnairesAssignedToMe: [Questionnaire]
 
-    " Th questionnaires that I created as a doctor "
+    " The questionnaires that I created as a doctor "
     questionnairesIMade: [Questionnaire]
+
+    " As a doctor, The questionnaires my patient is assigned, along with their answers "
+    questionnairesForMyPatient(patientId: Int!): [Questionnaire]
 
     " As a doctor, a listing of which questionnaires I've assigned to which patients "
     questionnaireAssignmentsIMade: [QuestionnaireAssignment]
