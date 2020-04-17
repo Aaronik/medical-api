@@ -269,11 +269,15 @@ function Db(knex: Knex) {
 
         await knex('Question').where({ id: question.id }).update({ id, text })
 
-        if (question.options)
-          await Promise.all(question.options.map(async o => {
-            if (o.id) await knex('QuestionOption').where({ id: o.id }).update({ text: o.text })
-            else await knex('QuestionOption').insert({ questionId: question.id, text: o.text })
-          }))
+        // TODO right now updating a question will delete a user's responses to that question, given the question has options.
+        // This was originally a bug, but after consideration it appears to be a feature. Don't want doctors making patients look
+        // bad.
+        if (question.options) {
+          // First remove all existing options, then add these all back.
+          await knex('QuestionOption').where({ questionId: question.id }).delete()
+          const rows = question.options.map(option => ({ questionId: question.id, text: option.text, id: option.id }))
+          await knex.batchInsert('QuestionOption', rows, 30)
+        }
 
         return db.Question.findById(question.id)
       },
