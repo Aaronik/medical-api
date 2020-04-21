@@ -60,7 +60,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     // setup
     const { data: { me: { id: doctorId }}} = await query(server).noError().asDoctor({ query: ME })
     const { data: { me: { id: patientId }}} = await query(server).noError().asPatient({ query: ME })
-    await mutate(server).noError().asDoctor({ mutation: ASSIGN_PATIENT_TO_DOCTOR, variables: { patientId, doctorId }})
+    await mutate(server).noError().asAdmin({ mutation: ASSIGN_PATIENT_TO_DOCTOR, variables: { patientId, doctorId }})
 
     {
       // Testing creation

@@ -96,7 +96,7 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     // Test to make sure the doctor can see the patient's questionnaires
     {
       // Assign patient to doctor
-      await mutate(server).noError().asDoctor({ mutation: ASSIGN_PATIENT_TO_DOCTOR, variables: { patientId, doctorId }})
+      await mutate(server).noError().asAdmin({ mutation: ASSIGN_PATIENT_TO_DOCTOR, variables: { patientId, doctorId }})
 
       const { data: { questionnairesForMyPatient: questionnaires }} = await query(server).noError()
         .asDoctor({ query: QUESTIONNAIRES_FOR_MY_PATIENT, variables: { patientId }})

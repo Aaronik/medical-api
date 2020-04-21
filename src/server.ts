@@ -38,10 +38,13 @@ export default function Server(knex: Knex) {
       Query: {
 
         user: async (parent, args, context, info) => {
+          // SECURITY user should only be able to get themselves, their patients or their doctors,
+          // unless they're admin.
           return db.User.findById(args.id)
         },
 
         users: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'ADMIN')
           return await db.User.findAll()
         },
 
@@ -66,6 +69,8 @@ export default function Server(knex: Knex) {
         },
 
         questionnaire: async (parent, args, context, info) => {
+          // SECURITY need to make sure that only an admin, the doctor who created the questionnaire,
+          // or a patient to whom the questionnaire is assigned, can call this
           const { id } = enforceArgs(args, 'id')
           return db.Questionnaire.findById(id, context.user?.id)
         },
@@ -98,6 +103,7 @@ export default function Server(knex: Knex) {
         },
 
         question: async (parent, args, context, info) => {
+          // SECURITY Admin, doctor who made it or patient to whom it's assigned
           const { id } = enforceArgs(args, 'id')
           return db.Question.findById(id, context.user?.id)
         },
@@ -130,7 +136,7 @@ export default function Server(knex: Knex) {
         createUser: async (parent, args, context, info) => {
           const { email, password, role, name } = enforceArgs(args, 'email', 'password', 'role', 'name')
           const existingUser = await db.User.findByEmail(email)
-          if (existingUser) throw new ValidationError(`A user with that email ${email} already exists!`)
+          if (existingUser) throw new ValidationError(`A user with the email ${email} already exists!`)
           return db.User.create(email, password, role, name)
         },
 
@@ -147,7 +153,7 @@ export default function Server(knex: Knex) {
 
           const update = {
             id: context.user.id,
-            role: user.role || context.user.role || null,
+            role: user.role || context.user.role || null, // SECURITY this can't be here. However, without it, the dropdown buttons won't work
             email: user.email || context.user.email || null,
             name: user.name || context.user.name || null,
             imageUrl: newImageUrl,
@@ -167,6 +173,12 @@ export default function Server(knex: Knex) {
         },
 
         assignPatientToDoctor: async (parent, args, context, info) => {
+          // SECURITY Patient basically has to come into system through the doctor, can't just
+          // sign up through <Signup/>. Otherwise all docs would have to be able to see all
+          // patients? Orrrrrrr, patient could sign up, theeeen through an email thing,
+          // a doc could invite a patient to be theirs. So basically this might happen outside
+          // of this endpoint. But it should probs still exist for admins?
+          enforceRoles(context.user, 'ADMIN')
           const { doctorId, patientId } = enforceArgs(args, 'patientId', 'doctorId')
           return db.User.createDoctorPatientAssociation(doctorId, patientId)
         },

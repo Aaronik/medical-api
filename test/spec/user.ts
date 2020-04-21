@@ -140,9 +140,11 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     t.equal(email1Resp, email1)
     t.equal(email2Resp, email2)
 
-    const { data: { users }} = await query(server).noError().asUnprived({ query: GET_USERS })
+    const { data: { users }} = await query(server).noError().asAdmin({ query: GET_USERS })
 
-    t.deepEqual(users, [{ email: email1 }, { email: email2 }])
+    t.deepEqual(users[0], { email: email1 })
+    t.deepEqual(users[1], { email: email2 })
+    t.equal(users.length, 3) // the last one is the admin that retrieved all the users
 
     t.end()
   })
