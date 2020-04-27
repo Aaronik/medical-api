@@ -5,6 +5,7 @@ import { Request } from 'express'
 import Db from 'src/db'
 import Knex from 'knex'
 import * as T from 'src/types.d'
+import { sleep } from 'src/util'
 
 // Abstracted so we can inject our db conection into it. This is so we can run tests and our dev/prod server
 // against different databases.
@@ -17,6 +18,8 @@ export default function Server(knex: Knex) {
     typeDefs,
 
     context: async (ctx) => {
+      // await sleep(500)
+
       const token = ctx.req.headers?.authorization
       if (!token) return {}
 
@@ -90,14 +93,13 @@ export default function Server(knex: Knex) {
           return db.QuestionnaireAssignment.findByAssignerId(context.user.id)
         },
 
-        questionnairesForMyPatient: async (parent, args, context, info) => {
+        patientQuestionnaireResponses: async (parent, args, context, info) => {
           enforceRoles(context.user, 'DOCTOR', 'ADMIN')
           const { patientId } = enforceArgs(args, 'patientId')
 
           // ensure doctor is doctor of patient
           const doctorsPatients = await db.User.findPatientsByDoctorId(context.user.id)
-          if (!doctorsPatients.map(p => p.id).includes(patientId))
-            throw new ForbiddenError('Must request your own patient')
+          if (!doctorsPatients.map(p => p.id).includes(patientId)) throw new ForbiddenError('Must request for your own patient')
 
           return db.Questionnaire.findAssignedToUser(patientId)
         },
@@ -233,15 +235,41 @@ export default function Server(knex: Knex) {
         },
 
         createQuestionnaireAssignment: async (parent, args, context, info) => {
-          enforceRoles(context.user, 'DOCTOR', 'ADMIN')
-          const { questionnaireId, assigneeId } = enforceArgs(args, 'questionnaireId', 'assigneeId')
-          return db.QuestionnaireAssignment.create(questionnaireId, assigneeId, context.user.id)
+          enforceRoles(context.user, 'DOCTOR')
+          const { assignment } = enforceArgs(args, 'assignment')
+
+          // Enforce patients belonging to doctor
+          const patients = await db.User.findPatientsByDoctorId(context.user.id)
+          if (!patients.some(patient => patient.id === assignment.assigneeId)) throw new ForbiddenError('Cannot assign questionnaires to users other than your patients.')
+          assignment.assignerId = context.user.id
+
+          return db.QuestionnaireAssignment.create(assignment)
+        },
+
+        updateQuestionnaireAssignment: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR')
+          const { assignment } = enforceArgs(args, 'assignment')
+
+          // Enforce patients belonging to doctor, but only if the assignment is being redirected
+          if (assignment.assigneeId) {
+            const patients = await db.User.findPatientsByDoctorId(context.user.id)
+            if (!patients.some(patient => patient.id === assignment.assigneeId)) throw new ForbiddenError('Cannot assign questionnaires to users other than your patients.')
+            assignment.assignerId = context.user.id
+          }
+
+          // Enforce assignment having been created by doctor
+          const dbAssignment = await db.QuestionnaireAssignment.findById(assignment.id)
+          if (dbAssignment.assignerId !== context.user.id) throw new ForbiddenError('Cannot update someone elses assignment.')
+
+          return db.QuestionnaireAssignment.update(assignment)
         },
 
         deleteQuestionnaireAssignment: async (parent, args, context, info) => {
           enforceRoles(context.user, 'DOCTOR', 'ADMIN')
-          const { questionnaireId, assigneeId } = enforceArgs(args, 'questionnaireId', 'assigneeId')
-          return db.QuestionnaireAssignment.delete(questionnaireId, assigneeId, context.user.id)
+          const { id } = enforceArgs(args, 'id')
+          const questionnaireAssignment = await db.QuestionnaireAssignment.findById(id)
+          if (questionnaireAssignment.assignerId !== context.user.id) throw new ForbiddenError('Must own assignment to delete it.')
+          return db.QuestionnaireAssignment.delete(id)
         },
 
         addQuestions: async (parent, { questions }, context, info) => {
@@ -265,26 +293,26 @@ export default function Server(knex: Knex) {
 
         submitBooleanQuestionResponse: async (parent, args, context, info) => {
           enforceRoles(context.user)
-          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
-          return db.Questionnaire.submitBooleanQuestionResponse(context.user.id, questionId, value)
+          const { questionId, assignmentInstanceId, value } = enforceArgs(args, 'questionId', 'assignmentInstanceId', 'value')
+          return db.Questionnaire.submitBooleanQuestionResponse(context.user.id, questionId, assignmentInstanceId, value)
         },
 
         submitTextQuestionResponse: async (parent, args, context, info) => {
           enforceRoles(context.user)
-          const { questionId, value } = enforceArgs(args, 'questionId', 'value')
-          return db.Questionnaire.submitTextQuestionResponse(context.user.id, questionId, value)
+          const { questionId, assignmentInstanceId, value } = enforceArgs(args, 'questionId', 'assignmentInstanceId', 'value')
+          return db.Questionnaire.submitTextQuestionResponse(context.user.id, questionId, assignmentInstanceId, value)
         },
 
         submitChoiceQuestionResponse: async (parent, args, context, info) => {
           enforceRoles(context.user)
-          const { questionId, optionId } = enforceArgs(args, 'optionId', 'questionId')
-          return db.Questionnaire.submitChoiceQuestionResponse(context.user.id, questionId, optionId)
+          const { questionId, assignmentInstanceId, optionId } = enforceArgs(args, 'optionId', 'assignmentInstanceId', 'questionId')
+          return db.Questionnaire.submitChoiceQuestionResponse(context.user.id, questionId, assignmentInstanceId, optionId)
         },
 
         submitChoiceQuestionResponses: async (parent, args, context, info) => {
           enforceRoles(context.user)
-          const { optionIds, questionId } = enforceArgs(args, 'optionIds', 'questionId')
-          return db.Questionnaire.submitChoiceQuestionResponses(context.user.id, questionId, optionIds)
+          const { optionIds, assignmentInstanceId, questionId } = enforceArgs(args, 'optionIds', 'assignmentInstanceId', 'questionId')
+          return db.Questionnaire.submitChoiceQuestionResponses(context.user.id, questionId, assignmentInstanceId, optionIds)
         },
 
       },

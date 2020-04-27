@@ -99,7 +99,6 @@ function Db(knex: Knex) {
       },
 
       recordVisit: async (userId: number) => {
-        const now = (new Date()).valueOf()
         return knex.raw('UPDATE UserLogin SET lastVisit = NOW() WHERE userId = ?', [userId])
       },
 
@@ -107,17 +106,21 @@ function Db(knex: Knex) {
 
     Questionnaire: {
 
-      // If the userId is supplied, we'll try to dig up their responses as well.
-      findById: async (id: number, userId?: number): Promise<T.Questionnaire | null> => {
+      // If the userId and assignmentInstanceId are supplied, we'll try to dig up the user's responses as well.
+      findById: async (id: number, userId?: number, assignmentInstanceId?: number): Promise<T.Questionnaire | null> => {
         const questionnaire = await knex<{}, T.Questionnaire>('Questionnaire').where({ id }).first()
         if (!questionnaire) return null
-        questionnaire.questions = await db.Question.findByQuestionnaireId(questionnaire.id, userId)
+        questionnaire.questions = await db.Question.findByQuestionnaireId(questionnaire.id, userId, assignmentInstanceId)
+        questionnaire.assignmentInstanceId = assignmentInstanceId
         return questionnaire
       },
 
       findAssignedToUser: async (userId: number) => {
-        const questionnaireIds = await knex('QuestionnaireAssignment').select('questionnaireId').where({ assigneeId: userId })
-        return Promise.all(questionnaireIds.map(({ questionnaireId }) => db.Questionnaire.findById(questionnaireId, userId)))
+        const assignmentInstances = await knex('QuestionnaireAssignmentInstance').where({ assigneeId: userId })
+
+        return Promise.all(assignmentInstances.map(assignmentInstance => {
+          return db.Questionnaire.findById(assignmentInstance.questionnaireId, userId, assignmentInstance.id)
+        }))
       },
 
       findMadeByUser: async (userId: number) => {
@@ -165,41 +168,41 @@ function Db(knex: Knex) {
         }))
       },
 
-      submitBooleanQuestionResponse: async (userId: string, questionId: string, value: boolean) => {
+      submitBooleanQuestionResponse: async (userId: string, questionId: number, assignmentInstanceId: number, value: boolean) => {
         try {
-          await knex('QuestionResponseBoolean').insert({ userId, questionId, value })
+          await knex('QuestionResponseBoolean').insert({ userId, questionId, assignmentInstanceId, value })
           return true
         } catch (e) {
-          await knex('QuestionResponseBoolean').where({ userId, questionId }).update({ value })
+          await knex('QuestionResponseBoolean').where({ userId, questionId, assignmentInstanceId }).update({ value })
           return true
         }
       },
 
-      submitTextQuestionResponse: async (userId: string, questionId: string, value: string) => {
+      submitTextQuestionResponse: async (userId: string, questionId: number, assignmentInstanceId: number, value: string) => {
         try {
-          await knex('QuestionResponseText').insert({ userId, questionId, value })
+          await knex('QuestionResponseText').insert({ userId, questionId, assignmentInstanceId, value })
           return true
         } catch (e) {
-          await knex('QuestionResponseText').where({ userId, questionId }).update({ value })
+          await knex('QuestionResponseText').where({ userId, questionId, assignmentInstanceId }).update({ value })
           return true
         }
       },
 
-      submitChoiceQuestionResponse: async (userId: string, questionId: number, optionId: number) => {
+      submitChoiceQuestionResponse: async (userId: string, questionId: number, assignmentInstanceId: number, optionId: number) => {
         const option = await knex<{}, T.QuestionOption>('QuestionOption').where({ id: optionId }).first()
 
         // we remove all the existing responses for this question
-        await knex('QuestionResponseChoice').where({ userId, questionId: option.questionId }).delete()
+        await knex('QuestionResponseChoice').where({ userId, questionId: option.questionId, assignmentInstanceId }).delete()
 
-        await knex('QuestionResponseChoice').insert({ userId, questionId: option.questionId, optionId })
+        await knex('QuestionResponseChoice').insert({ userId, questionId: option.questionId, assignmentInstanceId, optionId })
         return true
       },
 
-      submitChoiceQuestionResponses: async (userId: string, questionId: number, optionIds: number[]) => {
+      submitChoiceQuestionResponses: async (userId: string, questionId: number, assignmentInstanceId: number, optionIds: number[]) => {
         await ensureOptionsAreForSingleQuestion(knex, questionId, optionIds)
 
         // we remove all the existing responses for this question
-        await knex('QuestionResponseChoice').where({ userId, questionId }).delete()
+        await knex('QuestionResponseChoice').where({ userId, questionId, assignmentInstanceId }).delete()
 
         // If the user wants to remove all their options, we're done
         if (optionIds.length === 0) return true
@@ -208,7 +211,7 @@ function Db(knex: Knex) {
         // and assume it's the same with the rest. If not, the DB will throw.
         const firstOption = await knex('QuestionOption').where({ id: optionIds[0] }).first()
 
-        const rows = optionIds.map(optionId => ({ userId, questionId: firstOption.questionId, optionId }))
+        const rows = optionIds.map(optionId => ({ userId, questionId: firstOption.questionId, assignmentInstanceId, optionId }))
         await knex.batchInsert('QuestionResponseChoice', rows, 30)
         return true
       },
@@ -217,37 +220,57 @@ function Db(knex: Knex) {
 
     QuestionnaireAssignment: {
 
-      create: async (questionnaireId: number, assigneeId: number, assignerId: number) => {
-        await knex('QuestionnaireAssignment').insert({ questionnaireId, assigneeId, assignerId })
+      create: async (assignment: T.QuestionnaireAssignment) => {
+        const { questionnaireId, assigneeId, assignerId, repeatInterval } = assignment
+        const [assignmentId] = await knex('QuestionnaireAssignment').insert({ questionnaireId, assigneeId, assignerId, repeatInterval })
+        await db.QuestionnaireAssignmentInstance.create({ questionnaireId, assigneeId, assignerId, assignmentId })
+        return knex('QuestionnaireAssignment').where({ id: assignmentId }).first()
+      },
+
+      update: async (assignment: T.QuestionnaireAssignment) => {
+        const { id } = assignment
+        await knex('QuestionnaireAssignment').where({ id }).update(assignment)
+        return knex('QuestionnaireAssignment').where({ id }).first()
+      },
+
+      delete: async (id: number) => {
+        await knex('QuestionnaireAssignment').where({ id }).delete()
         return true
       },
 
-      delete: async (questionnaireId: number, assigneeId: number, assignerId: number) => {
-        await knex('QuestionnaireAssignment').where({ questionnaireId, assigneeId, assignerId }).delete()
-        return true
+      findById: async (id: number): Promise<T.QuestionnaireAssignment> => {
+        const assignment = await knex('QuestionnaireAssignment').where({ id }).select().first()
+        assignment.questionnaire = await db.Questionnaire.findById(assignment.questionnaireId)
+        assignment.assignee = await db.User.findById(assignment.assigneeId)
+        return assignment
       },
 
       findByAssignerId: async (assignerId: number) => {
-        const assignments = await knex<{}, T.QuestionnaireAssignment[]>('QuestionnaireAssignment').where({ assignerId }).select()
-        return Promise.all(assignments.map(async assignment => {
-          assignment.questionnaire = await db.Questionnaire.findById(assignment.questionnaireId)
-          assignment.assignee = await db.User.findById(assignment.assigneeId)
-          return assignment
-        }))
+        const assignmentIdsObject = await knex<{}, T.QuestionnaireAssignment[]>('QuestionnaireAssignment').where({ assignerId }).select('id')
+        const assignmentIds = assignmentIdsObject.map(o => o.id)
+        return Promise.all(assignmentIds.map(db.QuestionnaireAssignment.findById))
       },
 
     },
 
+    QuestionnaireAssignmentInstance: {
+
+      create: async (assignmentInstance: T.PreDBQuestionnaireAssignmentInstance) => {
+        const { questionnaireId, assigneeId, assignerId, assignmentId } = assignmentInstance
+        await knex('QuestionnaireAssignmentInstance').insert({ questionnaireId, assigneeId, assignerId, assignmentId })
+      }
+    },
+
     Question: {
 
-      findById: async (id: number, userId?: number) => {
-        const questions = await db.Question._findWhere({ id }, userId)
+      findById: async (id: number, userId?: number, assignmentInstanceId?: number) => {
+        const questions = await db.Question._findWhere({ id }, userId, assignmentInstanceId)
         if (!questions) return undefined
         return questions[0]
       },
 
-      findByQuestionnaireId: async (id: number, userId?: number) => {
-        return db.Question._findWhere({ questionnaireId: id }, userId)
+      findByQuestionnaireId: async (id: number, userId?: number, assignmentInstanceId?: number) => {
+        return db.Question._findWhere({ questionnaireId: id }, userId, assignmentInstanceId)
       },
 
       create: async (questions: T.Question[]) => {
@@ -286,7 +309,7 @@ function Db(knex: Knex) {
         return knex('Question').where({ id }).delete()
       },
 
-      _findWhere: async (where: Partial<T.Question>, userId?: number): Promise<T.Question[]> => {
+      _findWhere: async (where: Partial<T.Question>, userId?: number, assignmentInstanceId?: number): Promise<T.Question[]> => {
         let questions = await knex<{}, T.Question[]>('Question').where(where)
 
         await Promise.all(questions.map(async q => {
@@ -298,25 +321,33 @@ function Db(knex: Knex) {
             q.options = await knex<{}, T.QuestionOption[]>('QuestionOption').where({ questionId: q.id })
         }))
 
-        if (!userId) return questions
+        if (!userId || !assignmentInstanceId) return questions
 
         // If there's a user attached, we'll try to dig up their responses as well.
         await Promise.all(questions.map(async q => {
           const questionId = q.id
 
           if (q.type === 'BOOLEAN') {
-            const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>('QuestionResponseBoolean').where({ questionId, userId }).first()
+            const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>(
+              'QuestionResponseBoolean'
+            ).where({ questionId, userId, assignmentInstanceId }).first()
             if (booleanResponse !== undefined && booleanResponse !== null) // ensure we don't accidentally make no response a false response
               q.response = !!booleanResponse?.value // MySQL stores bool as binary
           } else if (q.type === 'TEXT') {
-            const textResponse = await knex<{}, T.DBQuestionResponseText>('QuestionResponseText').where({ questionId, userId }).first()
+            const textResponse = await knex<{}, T.DBQuestionResponseText>(
+              'QuestionResponseText'
+            ).where({ questionId, userId, assignmentInstanceId }).first()
             q.response = textResponse?.value
           } else if (q.type === 'SINGLE_CHOICE') {
-            const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>('QuestionResponseChoice').where({ questionId, userId }).first()
+            const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>(
+              'QuestionResponseChoice'
+            ).where({ questionId, userId, assignmentInstanceId }).first()
             const choiceOption = q.options.find(o => o.id === choiceResponse?.optionId)
             q.response = choiceOption
           } else if (q.type === 'MULTIPLE_CHOICE') {
-            const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>('QuestionResponseChoice').where({ questionId, userId })
+            const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>(
+              'QuestionResponseChoice'
+            ).where({ questionId, userId, assignmentInstanceId })
             const choiceOptions = choiceResponses.map(response => q.options.find(option => option.id === response.optionId))
             q.response = choiceOptions
           }
@@ -383,7 +414,7 @@ function Db(knex: Knex) {
       // here.
       clearDb: async () => {
         for (let table of [ // Must be in order to prevent foreign key errors
-          'QuestionnaireAssignment',
+          'QuestionnaireAssignmentInstance','QuestionnaireAssignment',
           'DoctorPatientRelationship',
           'TimelineGroupNesting', 'TimelineItem', 'TimelineGroup',
           'QuestionRelation',
@@ -413,9 +444,46 @@ function Db(knex: Knex) {
         }
         await knex.migrate.rollback(undefined, true)
         await knex.migrate.latest()
+      },
+
+      // Running this will make a single pass through the database and for every
+      // QuestionnaireAssignment satisfying the following conditions, it will
+      // create a new QuestionnaireAssignmentInstance, which will allow patients
+      // to fetch instances of the questionaire they need to fill out, and doctors
+      // to see all the different answers their patients have made.
+      //
+      // Conditions for creation of a new instance:
+      // * QuestionaireAssignment must have repeatInterval.
+      // * There must not be a QuestionnaireAssignment made within the last repeatInterval minutes.
+      createQuestionnaireAssignmentInstances: async () => {
+        const questionnaireAssignments = await knex<{}, T.QuestionnaireAssignment[]>('QuestionnaireAssignment').select()
+
+        questionnaireAssignments.forEach(async assignment => {
+          if (!assignment.repeatInterval) return // so a 0 value means we won't repeat.
+
+          const instances = await knex<{}, T.QuestionnaireAssignmentInstance[]>(
+            'QuestionnaireAssignmentInstance'
+          ).where({ assignmentId: assignment.id }).select()
+
+          const needNewInstance = instances.every(instance => {
+            const minutesNow = (new Date()).valueOf() / 60000
+            const minutesAtCreation = (new Date((instance.created as unknown as number))).valueOf() / 60000
+            return minutesNow - minutesAtCreation > assignment.repeatInterval
+          })
+
+          if (!needNewInstance) return
+
+          const newInstance: Omit<Omit<T.QuestionnaireAssignmentInstance, 'id'>, 'created'> = {
+            assignmentId: assignment.id,
+            questionnaireId: assignment.questionnaireId,
+            assigneeId: assignment.assigneeId,
+            assignerId: assignment.assignerId
+          }
+
+          await db.QuestionnaireAssignmentInstance.create(newInstance)
+        })
       }
     },
-
   }
 
   return db

@@ -24,8 +24,8 @@ export default gql`
     " The questionnaires that I created as a doctor "
     questionnairesIMade: [Questionnaire]
 
-    " As a doctor, The questionnaires my patient is assigned, along with their answers "
-    questionnairesForMyPatient(patientId: Int!): [Questionnaire]
+    " As a doctor, the responses (in questionnaire form) my patient has submitted "
+    patientQuestionnaireResponses(patientId: Int!): [Questionnaire]
 
     " As a doctor, a listing of which questionnaires I've assigned to which patients "
     questionnaireAssignmentsIMade: [QuestionnaireAssignment]
@@ -55,13 +55,14 @@ export default gql`
     deleteQuestion(id: Int!): Boolean
     createQuestionRelations(relations: [QuestionRelationInput]): Boolean
 
-    submitBooleanQuestionResponse(questionId: Int!, value: Boolean!): Boolean
-    submitTextQuestionResponse(questionId: Int!, value: String!): Boolean
-    submitChoiceQuestionResponse(questionId: Int!, optionId: Int!): Boolean
-    submitChoiceQuestionResponses(questionId: Int!, optionIds: [Int]!): Boolean
+    submitBooleanQuestionResponse(questionId: Int!, assignmentInstanceId: Int!, value: Boolean!): Boolean
+    submitTextQuestionResponse(questionId: Int!, assignmentInstanceId: Int!, value: String!): Boolean
+    submitChoiceQuestionResponse(questionId: Int!, assignmentInstanceId: Int!, optionId: Int!): Boolean
+    submitChoiceQuestionResponses(questionId: Int!, assignmentInstanceId: Int!, optionIds: [Int]!): Boolean
 
-    createQuestionnaireAssignment(questionnaireId: Int!, assigneeId: Int!): Boolean
-    deleteQuestionnaireAssignment(questionnaireId: Int!, assigneeId: Int!): Boolean
+    createQuestionnaireAssignment(assignment: QuestionnaireAssignmentInput!): QuestionnaireAssignment
+    updateQuestionnaireAssignment(assignment: QuestionnaireAssignmentUpdateInput!): QuestionnaireAssignment
+    deleteQuestionnaireAssignment(id: Int!): Boolean
   }
 
   ### Timeline
@@ -166,10 +167,14 @@ export default gql`
   type Questionnaire {
     id: Int
     title: String
+    assignmentInstanceId: Int
     questions: [Question]
   }
 
   type QuestionnaireAssignment {
+    id: Int
+    created: String
+    repeatInterval: Int
     assigneeId: Int
     assignee: User
     questionnaireId: Int
@@ -244,6 +249,23 @@ export default gql`
 
     "Boolean"
     BOOLEAN
+  }
+
+  input QuestionnaireAssignmentInput {
+    questionnaireId: Int!
+    assigneeId: Int!
+
+    " A 0 value means don't repeat at all "
+    repeatInterval: Int
+  }
+
+  input QuestionnaireAssignmentUpdateInput {
+    id: Int!
+    questionnaireId: Int
+    assigneeId: Int
+
+    " A 0 value means don't repeat at all "
+    repeatInterval: Int
   }
 
   input QuestionInput {

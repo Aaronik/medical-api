@@ -27,14 +27,35 @@ export type MeUserInput = {
 export type Questionnaire = {
   id: number
   title: string
+  assignmentInstanceId?: number
   questions: Question[]
 }
 
 export type QuestionnaireAssignment = {
+  id: number
   questionnaireId: number
   questionnaire?: Questionnaire
   assigneeId: number
   assignee?: User
+  assignerId: number
+  repeatInterval: number // in minutes
+}
+
+export type QuestionnaireAssignmentInstance = {
+  id: number
+  created: Date
+  assignmentId: number
+  questionnaireId: number
+  assigneeId: number
+  assignerId: number
+}
+
+// This should be a larger pattern. The DB adds stuff
+// but we still work with the type before it hits the DB.
+export type PreDBQuestionnaireAssignmentInstance = {
+  assignmentId: number
+  questionnaireId: number
+  assigneeId: number
   assignerId: number
 }
 

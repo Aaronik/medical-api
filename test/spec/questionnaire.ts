@@ -136,26 +136,6 @@ const CREATE_QUESTION_RELATIONS = gql`
   }
 `
 
-const SUBMIT_BOOLEAN_RESPONSE = gql`
-  mutation SubmitBoolean($questionId: Int!, $value: Boolean!) {
-    submitBooleanQuestionResponse(questionId: $questionId, value: $value)
-  }
-`
-
-const SUBMIT_TEXT_RESPONSE = gql`
-  mutation SubmitText($questionId: Int!, $value: String!) {
-    submitTextQuestionResponse(questionId: $questionId, value: $value)
-  }
-`
-
-const SUBMIT_CHOICE_RESPONSE = gql`
-  mutation SubmitChoice($questionId: Int!, $optionId: Int!) {
-    submitChoiceQuestionResponse(questionId: $questionId, optionId: $optionId)
-  }
-`
-
-// TODO SUBMIT_CHOICE_RESPONSES
-
 const DELETE_QUESTIONNAIRE = gql`
   mutation DeleteQuestionnaire($id: Int!) {
     deleteQuestionnaire(id: $id)
@@ -253,61 +233,6 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
     const { data: { createQuestionnaire: questionnaire } } = await mutate(server).noError().asUnprived({ mutation: GET_QUESTIONNAIRE, variables: { id: 42 } })
     t.equal(questionnaire, undefined)
-    t.end()
-  })
-
-  test('GQL Submit Responses to Questionnaire -> Retrieve Questionnaire with responses', async t => {
-    await db._util.clearDb()
-
-    const { data: { createQuestionnaire: createdQuestionnaire }} =
-      await mutate(server).noError().asAdmin({ mutation: CREATE_QUESTIONNAIRE, variables: { title, questions }})
-
-    const singleChoiceQuestion = createdQuestionnaire?.questions?.find(q => q.type === 'SINGLE_CHOICE')
-    const multipleChoiceQuestion = createdQuestionnaire?.questions?.find(q => q.type === 'MULTIPLE_CHOICE')
-    const booleanQuestion = createdQuestionnaire?.questions?.find(q => q.type === 'BOOLEAN')
-    const textQuestion = createdQuestionnaire?.questions?.find(q => q.type === 'TEXT')
-
-    const singleChoiceOption = singleChoiceQuestion?.options?.[0]
-    const multipleChoiceOption = multipleChoiceQuestion?.options?.[0]
-
-    const submitWithNoErrors = async () => {
-      const boolResp = await mutate(server).noError()
-        .asPatient({ mutation: SUBMIT_BOOLEAN_RESPONSE, variables: { questionId: booleanQuestion.id, value: true }})
-      const textResp = await mutate(server).noError()
-        .asPatient({ mutation: SUBMIT_TEXT_RESPONSE, variables: { questionId: textQuestion.id, value: 'text answer' }})
-      const singResp = await mutate(server).noError().asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: singleChoiceQuestion.id, optionId: singleChoiceOption.id }})
-      const multResp = await mutate(server).noError().asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: { questionId: multipleChoiceQuestion.id, optionId: multipleChoiceOption.id }})
-      const getResp = await query(server).noError().asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id }})
-
-      return { boolResp, textResp, singResp, multResp, getResp }
-    }
-
-    const { boolResp, textResp, singResp, multResp, getResp } = await submitWithNoErrors()
-
-    // Ensure responses can be updated
-    submitWithNoErrors()
-
-    const gottenQuestionnaire = getResp.data?.questionnaire
-
-    const getQuestionOfType = (questionnaire?: Questionnaire, type?: QuestionType) => {
-      // GraphQL requires using aliases for inline fragments that have similar keys of different types.
-      // This wreaks havoc on our typescript types. On a real client implementation, we need to define a
-      // specific type for each GraphQL request. This is why we cast to any here.
-      return questionnaire?.questions?.find(q => q.type === type) as any
-    }
-
-    t.equal(getQuestionOfType(gottenQuestionnaire, 'BOOLEAN').boolResp, true)
-    t.equal(getQuestionOfType(gottenQuestionnaire, 'TEXT').textResp, 'text answer')
-    t.equal(getQuestionOfType(gottenQuestionnaire, 'SINGLE_CHOICE').singleChoiceResp.id, singleChoiceOption.id)
-    t.deepEqual(getQuestionOfType(gottenQuestionnaire, 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceOption])
-
-    const { data: { questionnaire }} = await query(server).noError().asPatient({ query: GET_QUESTIONNAIRE, variables: { id: createdQuestionnaire.id } })
-
-    t.equal(getQuestionOfType(questionnaire, 'BOOLEAN').boolResp, true)
-    t.equal(getQuestionOfType(questionnaire, 'TEXT').textResp, 'text answer')
-    t.equal(getQuestionOfType(questionnaire, 'SINGLE_CHOICE').singleChoiceResp.id, singleChoiceOption.id)
-    t.deepEqual(getQuestionOfType(questionnaire, 'MULTIPLE_CHOICE').multipleChoiceResp, [multipleChoiceOption])
-
     t.end()
   })
 
