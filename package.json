@@ -42,6 +42,9 @@
     "knex": "^0.20.9",
     "lodash": "^4.17.15",
     "mysql": "^2.18.1",
+    "tsconfig-paths": "^3.9.0",
+    "ts-node": "^8.6.2",
+    "typescript": "^3.7.5",
     "uuid": "^3.4.0"
   },
   "devDependencies": {
@@ -50,9 +53,6 @@
     "apollo-server-testing": "^2.10.0",
     "tap-summary": "^4.0.0",
     "tape": "^4.13.0",
-    "ts-node": "^8.6.2",
-    "tsc-watch": "^4.1.0",
-    "tsconfig-paths": "^3.9.0",
-    "typescript": "^3.7.5"
+    "tsc-watch": "^4.1.0"
   }
 }

@@ -52,3 +52,7 @@ However, if you want to launch it raw, you can:
   * `DB_PORT`: the port the mysql database is listening on
 * From there, you can run `npm run build` to transpile the server.
 * Then, `npm run start` and the node server will start.
+
+* Note when deploying on heroku, we use JawsDB (for its mysql version number alone). This gets inserted into
+  the process environment as JAWSDB_URL, which is a single string we parse out for the above information.
+  If JAWSDB_URL is set, the others will all be ignored.
