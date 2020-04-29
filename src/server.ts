@@ -112,6 +112,7 @@ export default function Server(knex: Knex) {
 
         timelineItems: async (parent, args, context, info) => {
           const { userId } = enforceArgs(args, 'userId')
+          // TODO ensure only the requesting user or their doctor can see these
           return db.Timeline.itemsByUserId(userId)
         },
 
@@ -193,8 +194,7 @@ export default function Server(knex: Knex) {
         createTimelineItem: async (parent, args, context, info) => {
           enforceRoles(context.user)
           const { item } = enforceArgs(args, 'item')
-          item.userId = context.user?.id
-          return db.Timeline.createItem(item)
+          return db.Timeline.createItem(context.user.id, item)
         },
 
         updateTimelineItem: async (parent, args, context, info) => {
@@ -315,6 +315,12 @@ export default function Server(knex: Knex) {
           return db.Questionnaire.submitChoiceQuestionResponses(context.user.id, questionId, assignmentInstanceId, optionIds)
         },
 
+        submitEventQuestionResponse: async (parent, args, context, info) => {
+          enforceRoles(context.user)
+          const { questionId, assignmentInstanceId, event } = args
+          return db.Questionnaire.submitEventQuestionResponse(context.user.id, questionId, assignmentInstanceId, event)
+        },
+
       },
 
       QuestionMeta: {
@@ -330,6 +336,7 @@ export default function Server(knex: Knex) {
             case 'TEXT': return 'TextQuestion'
             case 'SINGLE_CHOICE': return 'SingleChoiceQuestion'
             case 'MULTIPLE_CHOICE': return 'MultipleChoiceQuestion'
+            case 'EVENT': return 'EventQuestion'
           }
         }
       },

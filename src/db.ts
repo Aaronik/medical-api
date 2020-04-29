@@ -140,6 +140,7 @@ function Db(knex: Knex) {
         const [questionnaireId] = await knex('Questionnaire').insert({ title: questionnaire.title, creatingUserId: userId })
 
         await Promise.all(questionnaire.questions.map(async q => {
+          // TODO woah, use db.Question.create here
           const [questionId] = await knex('Question').insert({ type: q.type, text: q.text, questionnaireId })
 
           if (!canHaveOptions(q)) return
@@ -214,6 +215,23 @@ function Db(knex: Knex) {
         const rows = optionIds.map(optionId => ({ userId, questionId: firstOption.questionId, assignmentInstanceId, optionId }))
         await knex.batchInsert('QuestionResponseChoice', rows, 30)
         return true
+      },
+
+      submitEventQuestionResponse: async (userId: number, questionId: number, assignmentInstanceId: number, event: T.QuestionEventInput) => {
+        const oldTimelineItemIdObject = await knex('QuestionResponseEvent').where({ userId, questionId, assignmentInstanceId }).select('timelineItemId').first()
+
+        if (oldTimelineItemIdObject) { // if this is true, this question is being updated
+          // Nuke the old timeline item formerly answered by this event question
+          await db.Timeline.deleteItem(oldTimelineItemIdObject.timelineItemId)
+
+          // Nuke the existing response
+          await knex('QuestionResponseEvent').where({ userId, questionId, assignmentInstanceId }).delete()
+        }
+
+        const { title, details, start, end } = event
+
+        const { id: timelineItemId } = await db.Timeline.createItem(userId, { content: details, title, start, end })
+        await knex('QuestionResponseEvent').insert({ userId, questionId, assignmentInstanceId, timelineItemId })
       },
 
     },
@@ -350,6 +368,11 @@ function Db(knex: Knex) {
             ).where({ questionId, userId, assignmentInstanceId })
             const choiceOptions = choiceResponses.map(response => q.options.find(option => option.id === response.optionId))
             q.response = choiceOptions
+          } else if (q.type === 'EVENT') {
+            const response = await knex('QuestionResponseEvent').where({ questionId, userId, assignmentInstanceId }).first()
+            if (!response) return
+            const timelineItem = await db.Timeline.findItemById(response.timelineItemId)
+            q.response = timelineItem
           }
         }))
 
@@ -380,9 +403,9 @@ function Db(knex: Knex) {
         }))
       },
 
-      createItem: async (item: T.TimelineItem) => {
+      createItem: async (userId: number, item: Omit<T.TimelineItem, 'id'>) => {
         item = sanitizeTimelineItem(item)
-        const [id] = await knex('TimelineItem').insert(item)
+        const [id] = await knex('TimelineItem').insert({ userId, ...item })
         return knex('TimelineItem').where({ id }).first()
       },
 
@@ -390,6 +413,10 @@ function Db(knex: Knex) {
         update = sanitizeTimelineItem(update)
         await knex('TimelineItem').where({ id: update.id }).update(update)
         return db.Timeline.findItemById(update.id)
+      },
+
+      deleteItem: async (id: number) => {
+        await knex('TimelineItem').where({ id }).delete()
       },
 
       updateGroup: async (update: Partial<T.TimelineGroup>) => {

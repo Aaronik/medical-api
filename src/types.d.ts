@@ -64,6 +64,7 @@ export type Question =
   | TextQuestion
   | SingleChoiceQuestion
   | MultipleChoiceQuestion
+  | EventQuestion
 
 export interface BooleanQuestion extends QuestionMeta {
   type: 'BOOLEAN'
@@ -85,6 +86,15 @@ export interface MultipleChoiceQuestion extends QuestionMeta {
   type: 'MULTIPLE_CHOICE'
   options: QuestionOption[]
   response?: QuestionOption[]
+}
+
+export interface EventQuestion extends QuestionMeta {
+  type: 'EVENT'
+  response?: TimelineItem
+  start: string
+  end: string
+  title: string
+  details: string
 }
 
 export interface QuestionMeta {
@@ -113,7 +123,14 @@ export type QuestionRelation = {
   equals?: string
 }
 
-export type QuestionType = 'TEXT' | 'MULTIPLE_CHOICE' | 'SINGLE_CHOICE' | 'BOOLEAN'
+export type QuestionEventInput = {
+  start: string
+  end: string
+  title: string
+  details: string
+}
+
+export type QuestionType = 'TEXT' | 'MULTIPLE_CHOICE' | 'SINGLE_CHOICE' | 'BOOLEAN' | 'EVENT'
 
 export type DBQuestionResponseBoolean = {
   questionId: number
@@ -136,13 +153,13 @@ export type DBQuestionResponseChoice = {
 export type TimelineItem = {
   className?: string;
   content: string;
+  title?: string;
   end?: string | Date;
   group?: number;
   id: number;
   start: string | Date;
   style?: string;
   subgroup?: number;
-  title?: string;
   type?: TimelineItemType;
   editable?: boolean;
   selectable?: boolean;

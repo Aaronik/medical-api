@@ -36,12 +36,14 @@ export async function up(knex: Knex): Promise<any> {
 
 
 export async function down(knex: Knex): Promise<any> {
-  // When this fires, there will be risk of duplicates b/c of primary key change if data has been collecting
-  // within the framework of having multiple responses to the same questionnaire. If we are running this
-  // rollback under those circumstances, then we are going to be deleting data anyways. So I'm actually
-  // going to let this stand as a kind of gate to prevent against data loss in that way. If it needs to be
-  // done still, we can just remove all primary keys from here, or we can come up with a plan to remove
-  // that data intelligently.
+  // When this fires, there will be risk of duplicates b/c of primary key
+  // change if data has been collecting within the framework of having multiple
+  // responses to the same questionnaire. If we are running this rollback under
+  // those circumstances, then we are going to be deleting data anyways. So I'm
+  // actually going to let this stand as a kind of gate to prevent against data
+  // loss in that way. If it needs to be done still, we can just remove all
+  // primary keys from here, or we can come up with a plan to remove that data
+  // intelligently.
   await knex.raw(`
     ALTER TABLE QuestionResponseBoolean
       DROP FOREIGN KEY question_response_boolean_assignment_instance,

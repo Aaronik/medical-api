@@ -59,6 +59,7 @@ export default gql`
     submitTextQuestionResponse(questionId: Int!, assignmentInstanceId: Int!, value: String!): Boolean
     submitChoiceQuestionResponse(questionId: Int!, assignmentInstanceId: Int!, optionId: Int!): Boolean
     submitChoiceQuestionResponses(questionId: Int!, assignmentInstanceId: Int!, optionIds: [Int]!): Boolean
+    submitEventQuestionResponse(questionId: Int!, assignmentInstanceId: Int!, event: EventResponseInput!): Boolean
 
     createQuestionnaireAssignment(assignment: QuestionnaireAssignmentInput!): QuestionnaireAssignment
     updateQuestionnaireAssignment(assignment: QuestionnaireAssignmentUpdateInput!): QuestionnaireAssignment
@@ -186,6 +187,7 @@ export default gql`
     | MultipleChoiceQuestion
     | SingleChoiceQuestion
     | BooleanQuestion
+    | EventQuestion
 
   type TextQuestion implements QuestionMeta {
     id: Int
@@ -237,6 +239,24 @@ export default gql`
     next: [QuestionRelation]
   }
 
+  type EventQuestion implements QuestionMeta {
+    id: Int
+    questionnaire: Questionnaire
+    text: String
+
+    "This will always be 'EVENT'"
+    type: QuestionType!
+    response: TimelineItem
+    next: [QuestionRelation]
+  }
+
+  input EventResponseInput {
+    start: String
+    end: String
+    title: String
+    details: String
+  }
+
   enum QuestionType {
     "Single Input"
     TEXT
@@ -249,6 +269,9 @@ export default gql`
 
     "Boolean"
     BOOLEAN
+
+    "Event -- answer will appear on timeline"
+    EVENT
   }
 
   input QuestionnaireAssignmentInput {

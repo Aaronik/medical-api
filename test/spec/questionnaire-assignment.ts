@@ -53,6 +53,14 @@ const QUESTIONS_FRAGMENT = gql`
       }
       ${CHOICE_QUESTIONS_SUBFRAGMENT}
     }
+    ... on EventQuestion {
+      eventResp: response {
+        title
+        start
+        end
+      }
+      ${NON_CHOICE_QUESTIONS_SUBFRAGMENT}
+    }
   }
 `
 
@@ -152,6 +160,26 @@ const SUBMIT_CHOICE_RESPONSES = gql`
   }
 `
 
+const SUBMIT_EVENT_RESPONSE = gql`
+  mutation SubmitEvent($questionId: Int!, $assignmentInstanceId: Int!, $event: EventResponseInput!) {
+    submitEventQuestionResponse(questionId: $questionId, assignmentInstanceId: $assignmentInstanceId, event: $event)
+  }
+`
+
+const TIMELINE_ITEMS = gql`
+  query TimelineItems($userId: Int!) {
+    timelineItems(userId: $userId) {
+      id
+      content
+      end
+      group
+      start
+      title
+      type
+    }
+  }
+`
+
 
 const QUESTIONNAIRE_TITLE = 'questionnaire title'
 const QUESTIONNAIRE_QUESTIONS: Omit<Omit<T.Question, 'id'>, 'questionnaireId'>[] = [
@@ -173,6 +201,10 @@ const QUESTIONNAIRE_QUESTIONS: Omit<Omit<T.Question, 'id'>, 'questionnaireId'>[]
     text: 'Sample Multiple Choice Question',
     options: [ { text: 'text' } as T.QuestionOption, { text: 'moar' } as T.QuestionOption ],
   },
+  {
+    type: 'EVENT',
+    text: 'Sample event text',
+  }
 ]
 
 
@@ -221,6 +253,9 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
     {
       const { data: { questionnairesAssignedToMe }} = await query(server).noError().asPatient({ query: QUESTIONNAIRES_ASSIGNED_TO_ME })
       const { assignmentInstanceId, questions } = questionnairesAssignedToMe[0]
+
+      t.equal(questions.length, QUESTIONNAIRE_QUESTIONS.length, 'The questions received are the same length as those given')
+
       await mutate(server).noError().asPatient({ mutation: SUBMIT_BOOLEAN_RESPONSE, variables: { questionId: questions[0].id, value: true, assignmentInstanceId }})
       await mutate(server).noError().asPatient({ mutation: SUBMIT_TEXT_RESPONSE, variables: { questionId: questions[1].id, value: 'text answer', assignmentInstanceId }})
       await mutate(server).noError().asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: {
@@ -232,17 +267,30 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
         questionId: questions[3].id,
         optionIds: questions[3].options.map(o => o.id), // select 'em all
         assignmentInstanceId
-      }})}
+      }})
+      await mutate(server).noError().asPatient({ mutation: SUBMIT_EVENT_RESPONSE, variables: {
+        questionId: questions[4].id,
+        assignmentInstanceId,
+        event: { start: '1', end: '2', title: questions[4].text, details: questions[4].text }
+      }})
+    }
 
     // Test to make sure the doctor can see the patients' questionnaire responses
     {
       const { data: { patientQuestionnaireResponses }} = await query(server).noError()
         .asDoctor({ query: QUESTIONNAIRES_FOR_MY_PATIENT, variables: { patientId }})
       const { questions } = patientQuestionnaireResponses[0]
-      t.deepEqual(questions[0].boolResp, true, 'Doctors can see their patients\' questionnaire responses')
-      t.deepEqual(questions[1].textResp, 'text answer', 'Doctors can see their patients\' questionnaire responses')
-      t.deepEqual(questions[2].singleChoiceResp, questions[2].options[0], 'Doctors can see their patients\' questionnaire responses')
-      t.deepEqual(questions[3].multipleChoiceResp, questions[3].options, 'Doctors can see their patients\' questionnaire responses')
+      t.deepEqual(questions[0].boolResp, true, 'Doctors can see their patients\' boolean responses')
+      t.deepEqual(questions[1].textResp, 'text answer', 'Doctors can see their patients\' text responses')
+      t.deepEqual(questions[2].singleChoiceResp, questions[2].options[0], 'Doctors can see their patients\' single choice responses')
+      t.deepEqual(questions[3].multipleChoiceResp, questions[3].options, 'Doctors can see their patients\' multiple choice responses')
+      t.equal(questions[4].eventResp.title, QUESTIONNAIRE_QUESTIONS[4].text, 'Doctors can see their patients\' event responses')
+    }
+
+    // Test to make sure the doc can see the patient's timeline data
+    {
+      const { data: { timelineItems } } = await query(server).noError().asDoctor({ query: TIMELINE_ITEMS, variables: { userId: patientId }})
+      t.equal(timelineItems[0].title, QUESTIONNAIRE_QUESTIONS[4].text, 'The doctor can see the patient\'s timeline items after having answered an event question')
     }
 
     // Test to ensure doctor cannot request patient that does not belong to them

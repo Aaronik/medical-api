@@ -18,18 +18,18 @@ export async function up(knex: Knex): Promise<any> {
   await knex.raw(`
     CREATE TABLE IF NOT EXISTS TimelineItem (
       id int(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,
-      className varchar(320),
+      title varchar(255),
       content text NOT NULL,
       start datetime NOT NULL,
       end datetime,
+      userId int(11) NOT NULL,
+      type ENUM('box', 'point', 'range', 'background') NOT NULL DEFAULT 'point',
+      className varchar(320),
       .group int(11),
       style text,
       subgroup int(11),
-      title varchar(255),
-      type ENUM('box', 'point', 'range', 'background'),
       editable BOOLEAN,
       selectable BOOLEAN,
-      userId int(11) NOT NULL,
 
       CONSTRAINT item_group FOREIGN KEY (\`group\`)
       REFERENCES TimelineGroup(id) ON DELETE CASCADE,
