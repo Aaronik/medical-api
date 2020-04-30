@@ -14,9 +14,6 @@ if (process.env.JAWSDB_URL) { // This is heroku specific
 
   const connection = { host, user, password, database }
 
-  console.log(query)
-  console.log(connection)
-
   module.exports = {
     client: 'mysql',
     connection
