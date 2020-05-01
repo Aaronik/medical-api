@@ -69,32 +69,37 @@ export type Question =
 export interface BooleanQuestion extends QuestionMeta {
   type: 'BOOLEAN'
   response?: Boolean
+  boolResp?: Boolean
 }
 
 export interface TextQuestion extends QuestionMeta {
   type: 'TEXT'
   response?: string
+  textResp?: string
 }
 
 export interface SingleChoiceQuestion extends QuestionMeta {
   type: 'SINGLE_CHOICE'
   options: QuestionOption[]
   response?: QuestionOption
+  singleChoiceResp?: QuestionOption
 }
 
 export interface MultipleChoiceQuestion extends QuestionMeta {
   type: 'MULTIPLE_CHOICE'
   options: QuestionOption[]
   response?: QuestionOption[]
+  multipleChoiceResp?: QuestionOption[]
 }
 
 export interface EventQuestion extends QuestionMeta {
   type: 'EVENT'
-  response?: TimelineItem
   start: string
   end: string
   title: string
   details: string
+  response?: TimelineItem
+  eventResp?: TimelineItem
 }
 
 export interface QuestionMeta {

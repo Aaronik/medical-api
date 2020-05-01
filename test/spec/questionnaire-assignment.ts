@@ -180,7 +180,6 @@ const TIMELINE_ITEMS = gql`
   }
 `
 
-
 const QUESTIONNAIRE_TITLE = 'questionnaire title'
 const QUESTIONNAIRE_QUESTIONS: Omit<Omit<T.Question, 'id'>, 'questionnaireId'>[] = [
   {
@@ -207,6 +206,9 @@ const QUESTIONNAIRE_QUESTIONS: Omit<Omit<T.Question, 'id'>, 'questionnaireId'>[]
   }
 ]
 
+const getQuestionOfType = (questions: T.Question[], type: T.QuestionType) => {
+  return questions.find(q => q.type === type)
+}
 
 export const test: TestModuleExport = (test, query, mutate, knex, db, server) => {
 
@@ -256,22 +258,28 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
 
       t.equal(questions.length, QUESTIONNAIRE_QUESTIONS.length, 'The questions received are the same length as those given')
 
-      await mutate(server).noError().asPatient({ mutation: SUBMIT_BOOLEAN_RESPONSE, variables: { questionId: questions[0].id, value: true, assignmentInstanceId }})
-      await mutate(server).noError().asPatient({ mutation: SUBMIT_TEXT_RESPONSE, variables: { questionId: questions[1].id, value: 'text answer', assignmentInstanceId }})
+      const booleanQuestion        = getQuestionOfType(questions, 'BOOLEAN')
+      const textQuestion           = getQuestionOfType(questions, 'TEXT')
+      const singleChoiceQuestion   = getQuestionOfType(questions, 'SINGLE_CHOICE')
+      const multipleChoiceQuestion = getQuestionOfType(questions, 'MULTIPLE_CHOICE')
+      const eventQuestion          = getQuestionOfType(questions, 'EVENT')
+
+      await mutate(server).noError().asPatient({ mutation: SUBMIT_BOOLEAN_RESPONSE, variables: { questionId: booleanQuestion.id, value: true, assignmentInstanceId }})
+      await mutate(server).noError().asPatient({ mutation: SUBMIT_TEXT_RESPONSE, variables: { questionId: textQuestion.id, value: 'text answer', assignmentInstanceId }})
       await mutate(server).noError().asPatient({ mutation: SUBMIT_CHOICE_RESPONSE, variables: {
-        questionId: questions[2].id,
-        optionId: questions[2].options[0].id,
+        questionId: singleChoiceQuestion.id,
+        optionId: singleChoiceQuestion.options[0].id,
         assignmentInstanceId
       }})
       await mutate(server).noError().asPatient({ mutation: SUBMIT_CHOICE_RESPONSES, variables: {
-        questionId: questions[3].id,
-        optionIds: questions[3].options.map(o => o.id), // select 'em all
+        questionId: multipleChoiceQuestion.id,
+        optionIds: multipleChoiceQuestion.options.map(o => o.id), // select 'em all
         assignmentInstanceId
       }})
       await mutate(server).noError().asPatient({ mutation: SUBMIT_EVENT_RESPONSE, variables: {
-        questionId: questions[4].id,
+        questionId: eventQuestion.id,
         assignmentInstanceId,
-        event: { start: '1', end: '2', title: questions[4].text, details: questions[4].text }
+        event: { start: '1', end: '2', title: eventQuestion.text, details: eventQuestion.text }
       }})
     }
 
@@ -280,11 +288,18 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
       const { data: { patientQuestionnaireResponses }} = await query(server).noError()
         .asDoctor({ query: QUESTIONNAIRES_FOR_MY_PATIENT, variables: { patientId }})
       const { questions } = patientQuestionnaireResponses[0]
-      t.deepEqual(questions[0].boolResp, true, 'Doctors can see their patients\' boolean responses')
-      t.deepEqual(questions[1].textResp, 'text answer', 'Doctors can see their patients\' text responses')
-      t.deepEqual(questions[2].singleChoiceResp, questions[2].options[0], 'Doctors can see their patients\' single choice responses')
-      t.deepEqual(questions[3].multipleChoiceResp, questions[3].options, 'Doctors can see their patients\' multiple choice responses')
-      t.equal(questions[4].eventResp.title, QUESTIONNAIRE_QUESTIONS[4].text, 'Doctors can see their patients\' event responses')
+
+      const booleanQuestion        = getQuestionOfType(questions, 'BOOLEAN') as T.BooleanQuestion
+      const textQuestion           = getQuestionOfType(questions, 'TEXT') as T.TextQuestion
+      const singleChoiceQuestion   = getQuestionOfType(questions, 'SINGLE_CHOICE') as T.SingleChoiceQuestion
+      const multipleChoiceQuestion = getQuestionOfType(questions, 'MULTIPLE_CHOICE') as T.MultipleChoiceQuestion
+      const eventQuestion          = getQuestionOfType(questions, 'EVENT') as T.EventQuestion
+
+      t.deepEqual(booleanQuestion.boolResp, true, 'Doctors can see their patients\' boolean responses')
+      t.deepEqual(textQuestion.textResp, 'text answer', 'Doctors can see their patients\' text responses')
+      t.deepEqual(singleChoiceQuestion.singleChoiceResp, singleChoiceQuestion.options[0], 'Doctors can see their patients\' single choice responses')
+      t.deepEqual(multipleChoiceQuestion.multipleChoiceResp, multipleChoiceQuestion.options, 'Doctors can see their patients\' multiple choice responses')
+      t.equal(eventQuestion.eventResp.title, QUESTIONNAIRE_QUESTIONS[4].text, 'Doctors can see their patients\' event responses')
     }
 
     // Test to make sure the doc can see the patient's timeline data
