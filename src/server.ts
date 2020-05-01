@@ -146,6 +146,7 @@ export default function Server(knex: Knex) {
         updateMe: async (parent, args, context, info) => {
           const { user }: { user: Partial<T.MeUserInput> } = enforceArgs(args, 'user')
           if (!context.user) throw new ForbiddenError('Must be authenticated to update user.')
+          if (user.role) throw new ForbiddenError('Cannot update role.')
 
           // users must be able to delete their images
           const newImageUrl = user.imageUrl === ""
@@ -156,7 +157,7 @@ export default function Server(knex: Knex) {
 
           const update = {
             id: context.user.id,
-            role: user.role || context.user.role || null, // SECURITY this can't be here. However, without it, the dropdown buttons won't work
+            role: context.user.role, // Note that we do not allow users to change their role
             email: user.email || context.user.email || null,
             name: user.name || context.user.name || null,
             imageUrl: newImageUrl,

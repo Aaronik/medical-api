@@ -14,7 +14,7 @@ const CREATE_USER = gql`
 const UPDATE_ME = gql`
   mutation ($user: MeInput) {
     updateMe(user:$user) {
-      role
+      name
       imageUrl
     }
   }
@@ -171,25 +171,30 @@ export const test: TestModuleExport = (test, query, mutate, knex, db, server) =>
   test('GQL Create User -> Update User', async t => {
     await db._util.clearDb()
 
-    // The trick here is I'm doing as an admin a change to doctor, so we should see the role be doc, which
-    // means the update went through.
-    const { data: { updateMe: { role }} } = await mutate(server).noError().asAdmin({ mutation: UPDATE_ME, variables: { user: {
-      role: 'DOCTOR',
+    const newName = 'NEW DOCTOR'
+
+    const { data: { updateMe: { name }} } = await mutate(server).noError().asDoctor({ mutation: UPDATE_ME, variables: { user: {
+      name: newName,
       imageUrl: 'www.image.com'
     }}})
 
     // Make sure images can be set to nothing
-    const { data: { updateMe: { imageUrl }}} = await mutate(server).noError().asAdmin({ mutation: UPDATE_ME, variables: { user: {
+    const { data: { updateMe: { imageUrl }}} = await mutate(server).noError().asDoctor({ mutation: UPDATE_ME, variables: { user: {
       imageUrl: ''
     }}})
 
-    t.equal(role, 'DOCTOR')
+    t.equal(name, newName)
     t.equal(imageUrl, '')
 
-    const { data: refetchData } = await query(server).asAdmin({ query: ME })
+    const { data: refetchData } = await query(server).noError().asDoctor({ query: ME })
 
-    t.equal(refetchData?.me?.role, 'DOCTOR')
+    t.equal(refetchData?.me?.name, newName)
     t.equal(refetchData?.me?.imageUrl, '')
+
+    // Make sure users can't set their roles
+    const { errors } = await mutate(server).asDoctor({ mutation: UPDATE_ME, variables: { user: { role: 'ADMIN' }}})
+
+    t.ok(errors)
 
     t.end()
   })
