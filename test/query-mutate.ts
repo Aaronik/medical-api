@@ -2,6 +2,7 @@ import { ApolloServer, gql } from 'apollo-server'
 import createTestClient from 'test/create-test-client'
 import { Role } from 'src/types.d'
 import uuid from 'uuid/v4'
+import knex from 'test/db-connection'
 
 /*
  * These help making privileged operations much, much easier. They handle creating a user with appropriate privs,
@@ -65,68 +66,62 @@ const runGqlAs = async (shouldCheckErrors: boolean, queryOptions: Mutation | Que
     else                       return query(queryOptions as Query)
   }
 
-  const [ email, password, name ] = [ `${role || 'UNPRIVILEGED'}@millitestuser.com`, 'password', role || 'UNPRIVILEGED' ]
+  const email = `${role || 'UNPRIVILEGED'}@millitestuser.com`
 
-  // 1) Try to sign in w/ email/pass
-  // If good: create prived client, run query
-  // If error: create user, etc
+  // Sign in with email
+  // * send requestAuthCode mutation with email
+  // * Get code from db directly
+  // * send submitAuthCode mutation with code
+  // * Update role of user in db directly
+  // * Use token to create test client
 
-  // First we'll try to sign in with this user's creds. If the user's been created already, we'll get
-  // a token. Otherwise there'll be some error about that user not existing, which we'll disgard for now.
-  let token = (await mutate({ mutation: AUTHENTICATE, variables: { email, password }})).data?.authenticate
+  // 1) send requestAuthCode
+  await mutate({ mutation: REQUEST_AUTH_CODE, variables: { email }})
 
-  // So if the login didn't work, we'll assume that user has never been created (in this test at least).
-  // So we create the user, and try to auth again.
-  if (!token) {
-    await mutate({ mutation: CREATE_USER, variables: { email, password, role, name }})
-    token = (await mutate({ mutation: AUTHENTICATE, variables: { email, password }})).data?.authenticate
-  }
+  // 2) Steal code from DB
+  const codeData = await knex('UserAuthCode').where({ email }).select('*').first()
+  const code = codeData.code
 
-  // If we still don't have a token it's because something is wrong somewhere down the line.
-  if (!token) throw new Error(
-    `QueryMutate: Milli custom mutate did not receive a token on sign in. Sorry
-    for this being an error, but I don't have access to the test object from in here!`
-  )
+  // 3) send submitAuthcodeMutation with code
+  const { data: tokenData } = await mutate({ mutation: SUBMIT_AUTH_CODE, variables: { code }})
+  const token = tokenData.submitAuthCode
 
+  // 4) update role of user
+  await knex('User').where({ email }).update({ role })
+
+  // 5) create test client
   // Remember, completely paradoxically, in order for our clients to be "signed in" using
   // createTestClient here, we have to fake an authorization header _on the server_ --
   // forcably implant it into the ApolloServer context function.
   // Because mutate and query can't send headers. See function definition.
   const privilegedClient = createTestClient(server, { authorization: token })
 
-  if (queryOptions.mutation) {
-    const result = await privilegedClient.mutate(queryOptions as Mutation)
-    if (!shouldCheckErrors) return result
-    if (result.errors !== undefined) throw new Error(
-      'QueryMutate: noError was specified, but error(s) were returned: ' + JSON.stringify(result.errors)
-    )
-    return result
-  } else {
-    const result = await privilegedClient.query(queryOptions as Query)
-    if (!shouldCheckErrors) return result
-    if (result.errors !== undefined) throw new Error(
-      'QueryMutate: noError was specified, but error(s) were returned: ' + JSON.stringify(result.errors)
-    )
-    return result
-  }
+  // Now we just need to run the query!
+  let result
 
+  if (queryOptions.mutation) result = await privilegedClient.mutate(queryOptions as Mutation)
+  else                       result = await privilegedClient.query(queryOptions as Query)
+
+  if (!shouldCheckErrors) return result
+
+  if (result.errors !== undefined) throw new Error(
+    'QueryMutate: noError was specified, but error(s) were returned: ' + JSON.stringify(result.errors)
+  )
+
+  return result
 }
 
 type Mutation = Parameters<ReturnType<typeof createTestClient>['mutate']>['0']
 type Query = Parameters<ReturnType<typeof createTestClient>['query']>['0']
 
-const CREATE_USER = gql`
-  mutation ($email: String, $password: String, $role: Role, $name: String) {
-    createUser(email: $email, password: $password, role: $role, name: $name) {
-      id
-      email
-    }
+const REQUEST_AUTH_CODE = gql`
+  mutation RequestAuthCode($email:String) {
+    requestAuthCode(email: $email)
   }
 `
 
-const AUTHENTICATE = gql`
-  mutation ($email: String, $password: String) {
-    authenticate(email: $email, password: $password)
+const SUBMIT_AUTH_CODE = gql`
+  mutation SubmitAuthCode($code:String!) {
+    submitAuthCode(code: $code)
   }
 `
-

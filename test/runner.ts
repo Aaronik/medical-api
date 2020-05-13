@@ -3,7 +3,7 @@ import Db from 'src/db'
 import Server from 'src/server'
 import { ApolloServer } from 'apollo-server'
 import { createTestClient } from 'apollo-server-testing'
-import knex from 'test/db-connection'
+import knex, { config as dbConfig } from 'test/db-connection'
 import fs from 'fs'
 import test from 'tape'
 import { query, mutate } from 'test/query-mutate'
@@ -75,5 +75,19 @@ db._util.migrateDownAndUp().then(() => {
   })
 
   Promise.all(executions).finally(() => knex.destroy())
+}).catch(async e => {
+  // In this instance, something has gone wrong with the down migration. This
+  // shouldn't be an error in migration scripts themselves, but rather that at
+  // some point the test suite errored out or was restarted and left the
+  // database in a weird state. In this case I normally end up manually
+  // destroying the test db and then creating it again. It's a PITA so I'm
+  // going to do this automatically here.
+  console.error(e)
+  if (e.code === 'ER_ROW_IS_REFERENCED') {
+    console.error('Dropping and re-creating database')
+    await knex.raw(`DROP DATABASE ${dbConfig.connection.database}`)
+    await knex.raw(`CREATE DATABASE ${dbConfig.connection.database}`)
+    console.error('Recreated the DB. Restart the test suite now.')
+  }
 })
 

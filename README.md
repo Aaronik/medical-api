@@ -56,3 +56,8 @@ However, if you want to launch it raw, you can:
 * Note when deploying on heroku, we use JawsDB (for its mysql version number alone). This gets inserted into
   the process environment as JAWSDB_URL, which is a single string we parse out for the above information.
   If JAWSDB_URL is set, the others will all be ignored.
+
+#### Other Environment Variables
+* `URL`: This should point to whatever url the app is at. This is used, ATTOW, for invitations and
+         sign in links. If this is unspecified, users may receive invitations like "Welcome to Milli,
+         click here to sign in: localhost:3000/auth/awefawefhuawifuhaefh". Wouldn't work well at all.

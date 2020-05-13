@@ -32,11 +32,12 @@ export default gql`
   }
 
   type Mutation {
-    createUser(email:String, password:String, role:Role, name:String): User
-    updateMe(user:MeInput): User
-
-    authenticate(email:String, password:String): String
+    requestAuthCode(email:String, phone:String): Boolean
+    submitAuthCode(code:String!): String # token
+    sendInvite(email:String, phone:String, role:Role!, name:String): Boolean
     deauthenticate: Boolean
+
+    updateMe(user:MeInput): User
 
     assignPatientToDoctor(patientId: Int!, doctorId: Int!): Boolean
     unassignPatientFromDoctor(patientId: Int!, doctorId: Int!): Boolean
@@ -139,6 +140,7 @@ export default gql`
     id: Int
     name: String
     email: String
+    phone: String
     role: Role
     joinDate: String
     lastVisit: String
@@ -158,6 +160,7 @@ export default gql`
   input MeInput {
     name: String
     email: String
+    phone: String
     role: Role
     imageUrl: String
     birthday: String

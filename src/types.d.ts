@@ -2,6 +2,7 @@ export type User = {
   id: number
   name: string
   email: string
+  phone: string
   joinDate: number
   lastVisit: number
   passwordHash: string
@@ -19,6 +20,7 @@ type Role = 'ADMIN' |'DOCTOR' |'PATIENT'
 export type MeUserInput = {
   name: string
   email: string
+  phone: string
   role: Role
   imageUrl: string
   birthday: number
@@ -183,3 +185,13 @@ export type TimelineGroup = {
 }
 
 export type TimelineItemType = 'box' | 'point' | 'range' | 'background';
+
+export type AuthCodeEntry = {
+  email?: string
+  phone?: string
+  role?: Role
+  name?: string
+  code: string
+  inviterId?: number
+  created: number
+}
