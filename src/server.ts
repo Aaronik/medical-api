@@ -184,12 +184,12 @@ export default function Server(knex: Knex) {
           // of this endpoint. But it should probs still exist for admins?
           enforceRoles(context.user, 'ADMIN')
           const { doctorId, patientId } = enforceArgs(args, 'patientId', 'doctorId')
-          return db.User.createDoctorPatientAssociation(doctorId, patientId)
+          return db.DoctorPatientAssociation.create(doctorId, patientId)
         },
 
         unassignPatientFromDoctor: async (parent, args, context, info) => {
           const { doctorId, patientId } = enforceArgs(args, 'patientId', 'doctorId')
-          return db.User.destroyDoctorPatientAssociation(doctorId, patientId)
+          return db.DoctorPatientAssociation.destroy(doctorId, patientId)
         },
 
         createTimelineItem: async (parent, args, context, info) => {
@@ -289,37 +289,37 @@ export default function Server(knex: Knex) {
         },
 
         createQuestionRelations: async (parent, { relations }, context, info) => {
-          return db.Questionnaire.createQuestionRelations(relations)
+          return db.QuestionRelation.create(relations)
         },
 
         submitBooleanQuestionResponse: async (parent, args, context, info) => {
           enforceRoles(context.user)
           const { questionId, assignmentInstanceId, value } = enforceArgs(args, 'questionId', 'assignmentInstanceId', 'value')
-          return db.Questionnaire.submitBooleanQuestionResponse(context.user.id, questionId, assignmentInstanceId, value)
+          return db.QuestionResponse.submitForBoolean(context.user.id, questionId, assignmentInstanceId, value)
         },
 
         submitTextQuestionResponse: async (parent, args, context, info) => {
           enforceRoles(context.user)
           const { questionId, assignmentInstanceId, value } = enforceArgs(args, 'questionId', 'assignmentInstanceId', 'value')
-          return db.Questionnaire.submitTextQuestionResponse(context.user.id, questionId, assignmentInstanceId, value)
+          return db.QuestionResponse.submitForText(context.user.id, questionId, assignmentInstanceId, value)
         },
 
         submitChoiceQuestionResponse: async (parent, args, context, info) => {
           enforceRoles(context.user)
           const { questionId, assignmentInstanceId, optionId } = enforceArgs(args, 'optionId', 'assignmentInstanceId', 'questionId')
-          return db.Questionnaire.submitChoiceQuestionResponse(context.user.id, questionId, assignmentInstanceId, optionId)
+          return db.QuestionResponse.submitForChoice(context.user.id, questionId, assignmentInstanceId, optionId)
         },
 
         submitChoiceQuestionResponses: async (parent, args, context, info) => {
           enforceRoles(context.user)
           const { optionIds, assignmentInstanceId, questionId } = enforceArgs(args, 'optionIds', 'assignmentInstanceId', 'questionId')
-          return db.Questionnaire.submitChoiceQuestionResponses(context.user.id, questionId, assignmentInstanceId, optionIds)
+          return db.QuestionResponse.submitMultipleForChoice(context.user.id, questionId, assignmentInstanceId, optionIds)
         },
 
         submitEventQuestionResponse: async (parent, args, context, info) => {
           enforceRoles(context.user)
           const { questionId, assignmentInstanceId, event } = args
-          return db.Questionnaire.submitEventQuestionResponse(context.user.id, questionId, assignmentInstanceId, event)
+          return db.QuestionResponse.submitForEvent(context.user.id, questionId, assignmentInstanceId, event)
         },
 
       },

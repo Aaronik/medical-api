@@ -46,27 +46,20 @@ function Db(knex: Knex) {
         return db.User.findById(update.id)
       },
 
-      _findOne: async (where: any) => {
-        const user = await userTables(knex).first().where(where)
-        if (!user) return null
-        user.patients = await db.User.findPatientsByDoctorId(user.id)
-        user.doctors = await db.User.findDoctorsForPatientId(user.id)
-        return user
-      },
-
       findById: async (id: number) => {
-        return await db.User._findOne({ id })
+        return await db.User._findOneWithRelations({ id })
       },
 
       findByEmail: async (email: string) => {
-        return await db.User._findOne({ email })
+        return await db.User._findOneWithRelations({ email })
       },
 
+      // SECURITY remove this altogether
       findAll: async () => {
         // TODO Need to do some clever joining to quicken this up, this is not scalable
         const userIds = await userTables(knex).select('id')
         return Promise.all(userIds.map(async ({ id }) => {
-          return db.User._findOne({ id })
+          return db.User._findOneWithRelations({ id })
         }))
       },
 
@@ -88,18 +81,30 @@ function Db(knex: Knex) {
           .where({ patientId })
       },
 
-      createDoctorPatientAssociation: async (doctorId: number, patientId: number) => {
+      recordVisit: async (userId: number) => {
+        return knex.raw('UPDATE UserLogin SET lastVisit = NOW() WHERE userId = ?', [userId])
+      },
+
+      _findOneWithRelations: async (where: any) => {
+        const user = await userTables(knex).first().where(where)
+        if (!user) return null
+        user.patients = await db.User.findPatientsByDoctorId(user.id)
+        user.doctors = await db.User.findDoctorsForPatientId(user.id)
+        return user
+      },
+
+    },
+
+    DoctorPatientAssociation: {
+
+      create: async (doctorId: number, patientId: number) => {
         await knex('DoctorPatientRelationship').insert({ doctorId, patientId })
         return true
       },
 
-      destroyDoctorPatientAssociation: async (doctorId: number, patientId: number) => {
+      destroy: async (doctorId: number, patientId: number) => {
         await knex('DoctorPatientRelationship').where({ doctorId, patientId }).delete()
         return true
-      },
-
-      recordVisit: async (userId: number) => {
-        return knex.raw('UPDATE UserLogin SET lastVisit = NOW() WHERE userId = ?', [userId])
       },
 
     },
@@ -163,13 +168,21 @@ function Db(knex: Knex) {
         return knex('Questionnaire').where({ id }).delete()
       },
 
-      createQuestionRelations: async (relations: T.QuestionRelation[]) => {
+    },
+
+    QuestionRelation: {
+
+      create: async (relations: T.QuestionRelation[]) => {
         await Promise.all(relations.map(async relation => {
           await knex('QuestionRelation').insert(relation)
         }))
       },
 
-      submitBooleanQuestionResponse: async (userId: string, questionId: number, assignmentInstanceId: number, value: boolean) => {
+    },
+
+    QuestionResponse: {
+
+      submitForBoolean: async (userId: string, questionId: number, assignmentInstanceId: number, value: boolean) => {
         try {
           await knex('QuestionResponseBoolean').insert({ userId, questionId, assignmentInstanceId, value })
           return true
@@ -179,7 +192,7 @@ function Db(knex: Knex) {
         }
       },
 
-      submitTextQuestionResponse: async (userId: string, questionId: number, assignmentInstanceId: number, value: string) => {
+      submitForText: async (userId: string, questionId: number, assignmentInstanceId: number, value: string) => {
         try {
           await knex('QuestionResponseText').insert({ userId, questionId, assignmentInstanceId, value })
           return true
@@ -189,7 +202,7 @@ function Db(knex: Knex) {
         }
       },
 
-      submitChoiceQuestionResponse: async (userId: string, questionId: number, assignmentInstanceId: number, optionId: number) => {
+      submitForChoice: async (userId: string, questionId: number, assignmentInstanceId: number, optionId: number) => {
         const option = await knex<{}, T.QuestionOption>('QuestionOption').where({ id: optionId }).first()
 
         // we remove all the existing responses for this question
@@ -199,7 +212,7 @@ function Db(knex: Knex) {
         return true
       },
 
-      submitChoiceQuestionResponses: async (userId: string, questionId: number, assignmentInstanceId: number, optionIds: number[]) => {
+      submitMultipleForChoice: async (userId: string, questionId: number, assignmentInstanceId: number, optionIds: number[]) => {
         await ensureOptionsAreForSingleQuestion(knex, questionId, optionIds)
 
         // we remove all the existing responses for this question
@@ -217,7 +230,7 @@ function Db(knex: Knex) {
         return true
       },
 
-      submitEventQuestionResponse: async (userId: number, questionId: number, assignmentInstanceId: number, event: T.QuestionEventInput) => {
+      submitForEvent: async (userId: number, questionId: number, assignmentInstanceId: number, event: T.QuestionEventInput) => {
         const oldTimelineItemIdObject = await knex('QuestionResponseEvent').where({ userId, questionId, assignmentInstanceId }).select('timelineItemId').first()
 
         if (oldTimelineItemIdObject) { // if this is true, this question is being updated
@@ -282,6 +295,7 @@ function Db(knex: Knex) {
     Question: {
 
       findById: async (id: number, userId?: number, assignmentInstanceId?: number) => {
+        // TODO speed this up by only asking sql for first
         const questions = await db.Question._findWhere({ id }, userId, assignmentInstanceId)
         if (!questions) return undefined
         return questions[0]
@@ -327,57 +341,65 @@ function Db(knex: Knex) {
         return knex('Question').where({ id }).delete()
       },
 
+      // Finds a question given a sql 'where' object, then finds and attaches responses to that question
+      // if both a userId and assignmentInstanceId are supplied.
       _findWhere: async (where: Partial<T.Question>, userId?: number, assignmentInstanceId?: number): Promise<T.Question[]> => {
         let questions = await knex<{}, T.Question[]>('Question').where(where)
 
+        // Relations and options
         await Promise.all(questions.map(async q => {
           // Grab each question relation and assign to question
           q.next = await knex<{}, T.QuestionRelation[]>('QuestionRelation').where({ questionId: q.id })
 
           // If questions can have options, grab em and stick em onto the question
-          if (canHaveOptions(q))
-            q.options = await knex<{}, T.QuestionOption[]>('QuestionOption').where({ questionId: q.id })
+          if (canHaveOptions(q)) q.options = await knex<{}, T.QuestionOption[]>('QuestionOption').where({ questionId: q.id })
         }))
 
         if (!userId || !assignmentInstanceId) return questions
 
         // If there's a user attached, we'll try to dig up their responses as well.
-        await Promise.all(questions.map(async q => {
-          const questionId = q.id
-
-          if (q.type === 'BOOLEAN') {
-            const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>(
-              'QuestionResponseBoolean'
-            ).where({ questionId, userId, assignmentInstanceId }).first()
-            if (booleanResponse !== undefined && booleanResponse !== null) // ensure we don't accidentally make no response a false response
-              q.response = !!booleanResponse?.value // MySQL stores bool as binary
-          } else if (q.type === 'TEXT') {
-            const textResponse = await knex<{}, T.DBQuestionResponseText>(
-              'QuestionResponseText'
-            ).where({ questionId, userId, assignmentInstanceId }).first()
-            q.response = textResponse?.value
-          } else if (q.type === 'SINGLE_CHOICE') {
-            const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>(
-              'QuestionResponseChoice'
-            ).where({ questionId, userId, assignmentInstanceId }).first()
-            const choiceOption = q.options.find(o => o.id === choiceResponse?.optionId)
-            q.response = choiceOption
-          } else if (q.type === 'MULTIPLE_CHOICE') {
-            const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>(
-              'QuestionResponseChoice'
-            ).where({ questionId, userId, assignmentInstanceId })
-            const choiceOptions = choiceResponses.map(response => q.options.find(option => option.id === response.optionId))
-            q.response = choiceOptions
-          } else if (q.type === 'EVENT') {
-            const response = await knex('QuestionResponseEvent').where({ questionId, userId, assignmentInstanceId }).first()
-            if (!response) return
-            const timelineItem = await db.Timeline.findItemById(response.timelineItemId)
-            q.response = timelineItem
-          }
+        questions = await Promise.all(questions.map(async q => {
+          return db.Question._attachResponsesToQuestion(q, userId, assignmentInstanceId)
         }))
 
         return questions
       },
+
+      _attachResponsesToQuestion: async (question: T.Question, userId, assignmentInstanceId) => {
+        const questionId = question.id
+
+        if (question.type === 'BOOLEAN') {
+          const booleanResponse = await knex<{}, T.DBQuestionResponseBoolean>(
+            'QuestionResponseBoolean'
+          ).where({ questionId, userId, assignmentInstanceId }).first()
+          if (booleanResponse !== undefined && booleanResponse !== null) // ensure we don't accidentally make no response a false response
+            question.response = !!booleanResponse?.value // MySQL stores bool as binary
+        } else if (question.type === 'TEXT') {
+          const textResponse = await knex<{}, T.DBQuestionResponseText>(
+            'QuestionResponseText'
+          ).where({ questionId, userId, assignmentInstanceId }).first()
+          question.response = textResponse?.value
+        } else if (question.type === 'SINGLE_CHOICE') {
+          const choiceResponse = await knex<{}, T.DBQuestionResponseChoice>(
+            'QuestionResponseChoice'
+          ).where({ questionId, userId, assignmentInstanceId }).first()
+          const choiceOption = question.options.find(o => o.id === choiceResponse?.optionId)
+          question.response = choiceOption
+        } else if (question.type === 'MULTIPLE_CHOICE') {
+          const choiceResponses = await knex<{}, T.DBQuestionResponseChoice[]>(
+            'QuestionResponseChoice'
+          ).where({ questionId, userId, assignmentInstanceId })
+          const choiceOptions = choiceResponses.map(response => question.options.find(option => option.id === response.optionId))
+          question.response = choiceOptions
+        } else if (question.type === 'EVENT') {
+          const response = await knex('QuestionResponseEvent').where({ questionId, userId, assignmentInstanceId }).first()
+          if (!response) return question
+          const timelineItem = await db.Timeline.findItemById(response.timelineItemId) // TODO reexamine response == timelineItem
+          question.response = timelineItem
+        }
+
+        return question
+      }
 
     },
 
@@ -419,14 +441,14 @@ function Db(knex: Knex) {
         await knex('TimelineItem').where({ id }).delete()
       },
 
-      updateGroup: async (update: Partial<T.TimelineGroup>) => {
-        await knex('TimelineGroup').where({ id: update.id }).update(update)
-        return db.Timeline.findGroupById(update.id)
-      },
-
       createGroup: async (group: T.TimelineGroup) => {
         const [id] = await knex('TimelineGroup').insert(group)
         return knex('TimelineGroup').where({ id }).first()
+      },
+
+      updateGroup: async (update: Partial<T.TimelineGroup>) => {
+        await knex('TimelineGroup').where({ id: update.id }).update(update)
+        return db.Timeline.findGroupById(update.id)
       },
 
     },
