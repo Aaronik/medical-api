@@ -453,6 +453,7 @@ function Db(knex: Knex) {
 
       createItem: async (userId: number, item: Omit<T.TimelineItem, 'id'>) => {
         item = sanitizeTimelineItem(item)
+        if (item.end) item.type = 'range'
         const [id] = await knex('TimelineItem').insert({ userId, ...item })
         return knex('TimelineItem').where({ id }).first()
       },
