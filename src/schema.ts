@@ -32,7 +32,7 @@ export default gql`
   }
 
   type Mutation {
-    requestAuthCode(email:String, phone:String): Boolean
+    requestAuthCode(email:String, phone:String): String # TODO use Boolean when no longer direct sending auth links
     submitAuthCode(code:String!): String # token
     sendInvite(email:String, phone:String, role:Role!, name:String): Boolean
     deauthenticate: Boolean

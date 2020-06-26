@@ -152,24 +152,37 @@ export default function Server(knex: Knex) {
 
           const code = await db.Auth.createAuthCode({ email, phone })
 
-          if (email) {
-            const title = 'Sign In to Milli'
-            const body = `Click here to sign in: ${APP_URL}/auth/${code}`
+          const signinUrl = `${APP_URL}/auth/${code}`
 
-            await messageUtility.sendEmail({ address: email, title, body }).catch(e => {
-              throw new Error('Whoops, there was an issue sending email. Please try again!')
-            })
-          }
+          // TODO:
+          //   This is commented out in order to allow the code to be sent _directly to the client_.
+          //   This VOIDS THE SECURITY so can only be used for demo purposes. For the time being,
+          //   everything is a demo, and we don't have the resources to create the requisite accounts
+          //   for sending texts or emails. So we're sending the URL straight down rather than via
+          //   sms or email. Since the user now doesn't have to verify their access to those accounts,
+          //   Milli does not lean on those accounts' security, therefore not leaning on any security.
+          //   It's imperative that before this goes live, this scheme is reverted!
 
-          if (phone) {
-            const textMessage = `Click here to sign in to Milli: ${APP_URL}/auth/${code}`
+          // if (email) {
+          //   const title = 'Sign In to Milli'
+          //   const body = `Click here to sign in: ${signinUrl}`
 
-            await messageUtility.sendText(phone, textMessage).catch(e => {
-              throw new Error('Whoops, there was an issue sending text. Please try again!')
-            })
-          }
+          //   await messageUtility.sendEmail({ address: email, title, body }).catch(e => {
+          //     throw new Error('Whoops, there was an issue sending email. Please try again!')
+          //   })
+          // }
 
-          return true
+          // if (phone) {
+          //   const textMessage = `Click here to sign in to Milli: ${signinUrl}`
+
+          //   await messageUtility.sendText(phone, textMessage).catch(e => {
+          //     throw new Error('Whoops, there was an issue sending text. Please try again!')
+          //   })
+          // }
+
+          // return true
+
+          return signinUrl
         },
 
         // When a user clicks an auth link in their email/text.
@@ -429,4 +442,4 @@ export const enforceRoles = (user?: T.User, ...roles: T.Role[]) => {
 
 // This is going to sit here in lieu of a proper config file. Once that files comes around,
 // this should be moved there.
-const APP_URL = process.env.URL || 'localhost:3000'
+const APP_URL = process.env.URL || 'http://localhost:3000'
