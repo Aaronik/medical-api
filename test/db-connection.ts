@@ -1,6 +1,6 @@
 import Knex from 'knex'
 
-const config = {
+export const config = {
   client: 'mysql',
   connection: {
     host: process.env.DB_HOST || '127.0.0.1',

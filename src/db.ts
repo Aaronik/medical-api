@@ -10,15 +10,42 @@ function Db(knex: Knex) {
   const db = {
 
     Auth: {
+      createAuthCode: async ({ email, phone, role, name, inviterId }: { email?: string, phone?: string, role?: T.Role, name?: string, inviterId?: number }) => {
+        const code = uuid()
+        if (role === 'ADMIN') throw new ForbiddenError('Cannot specify role as ADMIN.')
+        await knex('UserAuthCode').insert({ email, phone, role, name, code, inviterId })
+        return code
+      },
 
-      authenticate: async (email: string, password: string): Promise<string> => {
-        const user = await db.User.findByEmail(email)
-        if (!user) throw new AuthenticationError('Cannot find user with that email address!')
+      submitAuthCode: async (code: string) => {
+        const entry = await knex<{}, T.AuthCodeEntry>('UserAuthCode').where({ code }).first()
 
-        const hasCorrectPassword = bcrypt.compareSync(password, user.passwordHash)
-        if (!hasCorrectPassword) throw new AuthenticationError('Incorrect email/password combination.')
+        // If this code ain't legit, so be it
+        if (!entry) throw new Error('Code not found')
+
+        const { email, phone, name, inviterId } = entry
+
+        // If there's no role it means it's someone trying to sign up. ATTOW only
+        // doctors can sign up.
+        const role = entry.role || 'DOCTOR'
 
         const token = uuid()
+
+        // Code's good. Either the user exists and we sign them in or they're new
+        // and we need to create them in the system.
+        let user
+
+        if (email) user = await userTables(knex).where({ email }).first()
+        else if (phone) user = await userTables(knex).where({ phone }).first()
+
+        if (!user) {
+          // In this situation, we need to register a new user
+          user = await db.User.create({ email, phone, role, name })
+          // If there's an inviter, then it's an invitation from a doc to a patient. create that relationship here
+          if (inviterId && role === 'PATIENT') await db.DoctorPatientAssociation.create(inviterId, user.id)
+        }
+
+        // Sign them in
         await knex('UserToken').insert({ userId: user.id, token })
 
         return token
@@ -33,15 +60,14 @@ function Db(knex: Knex) {
 
     User: {
 
-      create: async (email: string, password: string, role: T.Role, name: string) => {
-        const passwordHash = hashPassword(email, password)
-        const [userId] = await knex('User').insert({ role, email, name })
-        await knex('UserLogin').insert({ userId, passwordHash })
+      create: async (user: Partial<T.User>) => {
+        const [userId] = await knex('User').insert(user)
+        await knex('UserLogin').insert({ userId })
         await knex('UserHealth').insert({ userId })
         return db.User.findById(userId)
       },
 
-      update: async (update: Pick<T.User, 'id' | 'role' | 'email' | 'name' | 'imageUrl' | 'birthday'>) => {
+      update: async (update: Partial<Pick<T.User, 'id' | 'role' | 'email' | 'name' | 'imageUrl' | 'birthday'>>) => {
         await knex('User').where({ id: update.id }).update(update)
         return db.User.findById(update.id)
       },
@@ -463,6 +489,7 @@ function Db(knex: Knex) {
       // here.
       clearDb: async () => {
         for (let table of [ // Must be in order to prevent foreign key errors
+          'UserAuthCode',
           'QuestionnaireAssignmentInstance','QuestionnaireAssignment',
           'DoctorPatientRelationship',
           'TimelineGroupNesting', 'TimelineItem', 'TimelineGroup',

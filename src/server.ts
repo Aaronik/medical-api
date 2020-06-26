@@ -5,7 +5,8 @@ import { Request } from 'express'
 import Db from 'src/db'
 import Knex from 'knex'
 import * as T from 'src/types.d'
-import { sleep } from 'src/util'
+import { sleep, messageUtility, isPhone, isEmail } from 'src/util'
+import uuid from 'uuid/v4'
 
 // Abstracted so we can inject our db conection into it. This is so we can run tests and our dev/prod server
 // against different databases.
@@ -53,7 +54,7 @@ export default function Server(knex: Knex) {
 
         me: async (parent, args, context, info) => {
           if (context.user) return context.user
-          throw new AuthenticationError('No user is currently authenticated.')
+            throw new AuthenticationError('No user is currently authenticated.')
         },
 
         patients: async (parent, args, context, info) => {
@@ -136,11 +137,80 @@ export default function Server(knex: Knex) {
 
       Mutation: {
 
-        createUser: async (parent, args, context, info) => {
-          const { email, password, role, name } = enforceArgs(args, 'email', 'password', 'role', 'name')
-          const existingUser = await db.User.findByEmail(email)
-          if (existingUser) throw new ValidationError(`A user with the email ${email} already exists!`)
-          return db.User.create(email, password, role, name)
+        deauthenticate: async (parent, args, context, info) => {
+          return db.Auth.deauthenticate(context.token)
+        },
+
+        requestAuthCode: async (parent, args, context, info) => {
+          const phone = args.phone?.toLowerCase()
+          const email = args.email?.toLowerCase()
+
+          if (!email && !phone) throw new UserInputError('Must supply either phone or email.')
+
+          if (phone && !isPhone(phone)) throw new UserInputError('Phone number is incorrectly formatted')
+          if (email && !isEmail(email)) throw new UserInputError('Email address is incorrectly formatted')
+
+          const code = await db.Auth.createAuthCode({ email, phone })
+
+          const signinUrl = `${APP_URL}/auth/${code}`
+
+          // TODO:
+          //   This is commented out in order to allow the code to be sent _directly to the client_.
+          //   This VOIDS THE SECURITY so can only be used for demo purposes. For the time being,
+          //   everything is a demo, and we don't have the resources to create the requisite accounts
+          //   for sending texts or emails. So we're sending the URL straight down rather than via
+          //   sms or email. Since the user now doesn't have to verify their access to those accounts,
+          //   Milli does not lean on those accounts' security, therefore not leaning on any security.
+          //   It's imperative that before this goes live, this scheme is reverted!
+
+          // if (email) {
+          //   const title = 'Sign In to Milli'
+          //   const body = `Click here to sign in: ${signinUrl}`
+
+          //   await messageUtility.sendEmail({ address: email, title, body }).catch(e => {
+          //     throw new Error('Whoops, there was an issue sending email. Please try again!')
+          //   })
+          // }
+
+          // if (phone) {
+          //   const textMessage = `Click here to sign in to Milli: ${signinUrl}`
+
+          //   await messageUtility.sendText(phone, textMessage).catch(e => {
+          //     throw new Error('Whoops, there was an issue sending text. Please try again!')
+          //   })
+          // }
+
+          // return true
+
+          return signinUrl
+        },
+
+        // When a user clicks an auth link in their email/text.
+        // If this were a standard HTTP server we could process this
+        // at page request, but since we're using GQL the page will have
+        // to send this mutation after it's loaded.
+        submitAuthCode: async (parent, args, context, info) => {
+          const { code } = args
+          const token = await db.Auth.submitAuthCode(code)
+          return token
+        },
+
+        sendInvite: async (parent, args, context, info) => {
+          enforceRoles(context.user, 'DOCTOR')
+          const { email, phone, name, role } = args
+
+          if (phone && !isPhone(phone)) throw new UserInputError('Phone number is incorrectly formatted')
+          if (email && !isEmail(email)) throw new UserInputError('Email address is incorrectly formatted')
+
+          const inviterId = context.user.id
+          const code = await db.Auth.createAuthCode({ email, phone, name, role, inviterId })
+
+          const textMessage = `You've been invited to Milli: ${APP_URL}/auth/${code}`
+          const title = `You've been invited to Milli`
+          const body = `You've been invited to Milli! Please click here to sign in: ${APP_URL}/auth/${code}`
+          if (phone) messageUtility.sendText(phone, textMessage)
+          if (email) messageUtility.sendEmail({ address: email, title, body })
+          return true
         },
 
         updateMe: async (parent, args, context, info) => {
@@ -157,23 +227,14 @@ export default function Server(knex: Knex) {
 
           const update = {
             id: context.user.id,
-            role: context.user.role, // Note that we do not allow users to change their role
-            email: user.email || context.user.email || null,
-            name: user.name || context.user.name || null,
-            imageUrl: newImageUrl,
-            birthday: user.birthday || context.user.birthday || null
+            email: user.hasOwnProperty('email') ? user.email : context.user.email,
+            phone: user.hasOwnProperty('phone') ? user.phone : context.user.phone,
+            name: user.hasOwnProperty('name') ? user.name : context.user.name,
+            imageUrl: user.hasOwnProperty('imageUrl') ? user.imageUrl : context.user.imageUrl,
+            birthday: user.hasOwnProperty('birthday') ? user.birthday : context.user.birthday,
           }
 
           return db.User.update(update)
-        },
-
-        authenticate: async (parent, args, context, info) => {
-          const { email, password } = enforceArgs(args, 'email', 'password')
-          return db.Auth.authenticate(email, password)
-        },
-
-        deauthenticate: async (parent, args, context, info) => {
-          return db.Auth.deauthenticate(context.token)
         },
 
         assignPatientToDoctor: async (parent, args, context, info) => {
@@ -253,9 +314,9 @@ export default function Server(knex: Knex) {
 
           // Enforce patients belonging to doctor, but only if the assignment is being redirected
           if (assignment.assigneeId) {
-            const patients = await db.User.findPatientsByDoctorId(context.user.id)
-            if (!patients.some(patient => patient.id === assignment.assigneeId)) throw new ForbiddenError('Cannot assign questionnaires to users other than your patients.')
-            assignment.assignerId = context.user.id
+          const patients = await db.User.findPatientsByDoctorId(context.user.id)
+          if (!patients.some(patient => patient.id === assignment.assigneeId)) throw new ForbiddenError('Cannot assign questionnaires to users other than your patients.')
+          assignment.assignerId = context.user.id
           }
 
           // Enforce assignment having been created by doctor
@@ -346,7 +407,6 @@ export default function Server(knex: Knex) {
   }
 
   return new ApolloServer(apolloOptions)
-
 }
 
 // Sigh, this is just how Apollo structures it. It'd be great if they'd export this type
@@ -380,3 +440,6 @@ export const enforceRoles = (user?: T.User, ...roles: T.Role[]) => {
   if (!user || !roles.includes(user.role)) throw new ForbiddenError('Insufficient permissions.')
 }
 
+// This is going to sit here in lieu of a proper config file. Once that files comes around,
+// this should be moved there.
+const APP_URL = process.env.URL || 'http://localhost:3000'
