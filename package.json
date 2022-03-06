@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "description": "A GQL server that bridges external APIs and maybe more...",
   "main": "index.ts",
+  "engines": {
+    "node": "14.x"
+  },
   "scripts": {
     "build": "rm -rf dist && tsc",
     "build:watch": "npm run build -w",

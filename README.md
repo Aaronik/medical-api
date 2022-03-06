@@ -44,6 +44,7 @@ However, if you want to launch it raw, you can:
 
 * Create a mysql instance somewhere
 * Populate the following environment variables:
+  * `URL`: What is the URL the app is being served from
   * `PORT`: What port the GQL server should listen on
   * `DB_HOST`: the database hostname (for use with the `-h` flag for the `mysql-client` program)
   * `DB_USER`: the user
@@ -56,6 +57,8 @@ However, if you want to launch it raw, you can:
 * Note when deploying on heroku, we use JawsDB (for its mysql version number alone). This gets inserted into
   the process environment as JAWSDB_URL, which is a single string we parse out for the above information.
   If JAWSDB_URL is set, the others will all be ignored.
+
+* When deploying to heroku, use this command to provision jawsdb: `heroku addons:create jawsdb:kitefin --version=5.7`
 
 #### Other Environment Variables
 * `URL`: This should point to whatever url the app is at. This is used, ATTOW, for invitations and
